@@ -184,6 +184,18 @@ let blocks = [];
 let particles = [];
 let score = 0;
 
+// Beat detection
+let beatAnalyser = null;
+let freqData = null;
+const KICK_BIN_COUNT = 3;     // bins 0-2 = 0..130Hz approx
+const KICK_HISTORY_SIZE = 30;
+const KICK_COOLDOWN_MS = 180;
+const KICK_THRESHOLD_RATIO = 1.5; // energy must be 1.5x rolling avg
+const KICK_MIN_ENERGY = 90;
+const kickHistory = [];
+let lastKickTime = 0;
+let beatFlashTime = 0;
+
 let canvas, gctx;
 let GAME_W = 0, GAME_H = 0, DPR = 1;
 let lastTime = 0;
@@ -216,14 +228,59 @@ function initBlocks(){
   const topY = GAME_H * BLOCK_TOP_OFFSET_PCT;
   for(let r = 0; r < BLOCK_ROWS; r++){
     for(let c = 0; c < BLOCK_COLS; c++){
+      const y = topY + r * (BLOCK_HEIGHT + BLOCK_GAP);
       blocks.push({
         x: BLOCK_GAP + c * (blockW + BLOCK_GAP),
-        y: topY + r * (BLOCK_HEIGHT + BLOCK_GAP),
+        y, targetY: y,
         w: blockW,
         h: BLOCK_HEIGHT,
         color: ROW_COLORS[r]
       });
     }
+  }
+}
+
+// On kick: shift all existing blocks down 1 step, add 1 new at random column
+function onKick(){
+  beatFlashTime = performance.now();
+  const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
+  const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
+  const shift = BLOCK_HEIGHT + BLOCK_GAP;
+  const topY = GAME_H * BLOCK_TOP_OFFSET_PCT;
+  // Shift all existing blocks
+  for(const b of blocks){
+    b.targetY += shift;
+  }
+  // Cull off-screen
+  blocks = blocks.filter(b => b.targetY < GAME_H + 20);
+  // Add new block at top in random column
+  const col = Math.floor(Math.random() * BLOCK_COLS);
+  const colorIdx = Math.floor(Math.random() * ROW_COLORS.length);
+  blocks.push({
+    x: BLOCK_GAP + col * (blockW + BLOCK_GAP),
+    y: topY - shift, // start above and slide in
+    targetY: topY,
+    w: blockW,
+    h: BLOCK_HEIGHT,
+    color: ROW_COLORS[colorIdx]
+  });
+}
+
+function detectKick(){
+  if(!beatAnalyser || !freqData) return;
+  beatAnalyser.getByteFrequencyData(freqData);
+  let energy = 0;
+  for(let i = 0; i < KICK_BIN_COUNT; i++) energy += freqData[i];
+  kickHistory.push(energy);
+  if(kickHistory.length > KICK_HISTORY_SIZE) kickHistory.shift();
+  if(kickHistory.length < 10) return;
+  let avg = 0;
+  for(const v of kickHistory) avg += v;
+  avg /= kickHistory.length;
+  const now = performance.now();
+  if(energy > avg * KICK_THRESHOLD_RATIO && energy > KICK_MIN_ENERGY && now - lastKickTime > KICK_COOLDOWN_MS){
+    lastKickTime = now;
+    onKick();
   }
 }
 
@@ -318,6 +375,16 @@ function spawnKeyDomFx(keyEl){
 // ============================================================
 function update(dt){
   const now = performance.now();
+  // --- kick detection (beat-synced block descent) ---
+  detectKick();
+  // --- block smooth slide (lerp toward targetY) ---
+  for(const b of blocks){
+    if(b.targetY !== undefined && b.y !== b.targetY){
+      const diff = b.targetY - b.y;
+      if(Math.abs(diff) < 0.5){ b.y = b.targetY; }
+      else { b.y += diff * 0.22; }
+    }
+  }
   // --- bullets ---
   for(let i = bullets.length - 1; i >= 0; i--){
     const b = bullets[i];
@@ -479,6 +546,16 @@ function startStems(){
     const gain = ctx.createGain();
     gain.gain.value = stemStates[s];
     src.connect(gain).connect(ctx.destination);
+    // Beat stem: also tap into analyser for kick detection (pre-gain so muting BEAT doesn't stop block descent)
+    if(s === 'beat'){
+      beatAnalyser = ctx.createAnalyser();
+      beatAnalyser.fftSize = 1024;
+      beatAnalyser.smoothingTimeConstant = 0.2;
+      freqData = new Uint8Array(beatAnalyser.frequencyBinCount);
+      src.connect(beatAnalyser);
+      kickHistory.length = 0;
+      lastKickTime = 0;
+    }
     src.start(t);
     stemSources[s] = src;
     stemGains[s] = gain;
