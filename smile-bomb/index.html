@@ -429,7 +429,8 @@ function update(dt){
   // --- kick detection (beat-synced block descent) ---
   detectKick();
   // --- block smooth slide (lerp toward targetY) + danger zone check ---
-  const dangerY = GAME_H * 0.85;
+  // Trigger only when block visually reaches stage bottom (within ~8px of edge)
+  const dangerY = GAME_H - 8;
   for(const b of blocks){
     if(b.targetY !== undefined && b.y !== b.targetY){
       const diff = b.targetY - b.y;
