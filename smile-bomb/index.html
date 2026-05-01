@@ -42,8 +42,15 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .progress{width:100%;height:6px;border:1px solid #ff6b9d;background:#1a0a2e;position:relative;flex-shrink:0}
 .progress-fill{height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd93d,#5DCAA5,#c8b6ff);width:0%;transition:width 0.1s linear}
 
-.stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 75%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px}
+.stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 75%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
 .stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.25);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
+.stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:3;opacity:0;transition:opacity 0.05s}
+.stage-area.damage{border-color:#ff3060;animation:damageBorder 0.4s ease-out}
+.stage-area.damage::after{background:radial-gradient(ellipse at center,transparent 20%,rgba(255,40,60,0.6) 100%);animation:damageVignette 0.4s ease-out}
+@keyframes damageBorder{0%{box-shadow:0 0 0 4px rgba(255,48,96,0.7),inset 0 0 30px rgba(255,48,96,0.5)}100%{box-shadow:0 0 0 0 rgba(255,48,96,0),inset 0 0 0 rgba(255,48,96,0)}}
+@keyframes damageVignette{0%{opacity:1}100%{opacity:0}}
+body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shakeKey{10%{transform:translate(-3px,1px)}20%{transform:translate(3px,-1px)}30%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}50%{transform:translate(-3px,1px)}60%{transform:translate(3px,-1px)}70%{transform:translate(-2px,1px)}80%{transform:translate(2px,0)}90%{transform:translate(-1px,0)}100%{transform:translate(0,0)}}
 #gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2}
 
 /* Stems panel */
@@ -187,14 +194,20 @@ let score = 0;
 // Beat detection
 let beatAnalyser = null;
 let freqData = null;
-const KICK_BIN_COUNT = 3;     // bins 0-2 = 0..130Hz approx
+const KICK_BIN_COUNT = 2;     // bins 0-1 = 0..86Hz, kick-focused
 const KICK_HISTORY_SIZE = 30;
-const KICK_COOLDOWN_MS = 180;
-const KICK_THRESHOLD_RATIO = 1.5; // energy must be 1.5x rolling avg
-const KICK_MIN_ENERGY = 90;
+const KICK_COOLDOWN_MS = 200;
+const KICK_THRESHOLD_RATIO = 1.4;  // 1.4x rolling avg
+const KICK_MIN_ENERGY = 70;
+const KICK_DELTA_THRESHOLD = 20;   // energy must rise sharply (transient)
 const kickHistory = [];
 let lastKickTime = 0;
+let lastEnergy = 0;
 let beatFlashTime = 0;
+
+// Damage effect (block touching bottom)
+let lastDamageTime = 0;
+const DAMAGE_COOLDOWN_MS = 700;
 
 let canvas, gctx;
 let GAME_W = 0, GAME_H = 0, DPR = 1;
@@ -221,6 +234,24 @@ function resizeCanvas(){
 // ============================================================
 // Block init
 // ============================================================
+// Block type colors
+const TOUGH_COLORS = ['#c8b6ff','#7a5fa5','#3a1f55']; // hp=1 (light) → hp=3 (dark)
+const PENETRATE_COLOR = '#ffd93d';
+
+function makeBlock(x, y, baseColor){
+  const r = Math.random();
+  if(r < 0.05){
+    // Penetrate block: bullet passes through
+    return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:PENETRATE_COLOR, type:'penetrate', hp:1, maxHp:1};
+  }
+  if(r < 0.30){
+    // Tough block: 3 hits
+    return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:TOUGH_COLORS[2], type:'tough', hp:3, maxHp:3};
+  }
+  // Normal block
+  return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:baseColor, type:'normal', hp:1, maxHp:1};
+}
+
 function initBlocks(){
   blocks = [];
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
@@ -229,41 +260,43 @@ function initBlocks(){
   for(let r = 0; r < BLOCK_ROWS; r++){
     for(let c = 0; c < BLOCK_COLS; c++){
       const y = topY + r * (BLOCK_HEIGHT + BLOCK_GAP);
-      blocks.push({
-        x: BLOCK_GAP + c * (blockW + BLOCK_GAP),
-        y, targetY: y,
-        w: blockW,
-        h: BLOCK_HEIGHT,
-        color: ROW_COLORS[r]
-      });
+      const blk = makeBlock(BLOCK_GAP + c * (blockW + BLOCK_GAP), y, ROW_COLORS[r]);
+      blk.w = blockW;
+      blocks.push(blk);
     }
   }
 }
 
-// On kick: shift all existing blocks down 1 step, add 1 new at random column
+// On kick: shift all existing blocks down 1 step, add 2-3 new at random columns
 function onKick(){
   beatFlashTime = performance.now();
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const shift = BLOCK_HEIGHT + BLOCK_GAP;
   const topY = GAME_H * BLOCK_TOP_OFFSET_PCT;
-  // Shift all existing blocks
-  for(const b of blocks){
-    b.targetY += shift;
-  }
-  // Cull off-screen
+  for(const b of blocks){ b.targetY += shift; }
   blocks = blocks.filter(b => b.targetY < GAME_H + 20);
-  // Add new block at top in random column
-  const col = Math.floor(Math.random() * BLOCK_COLS);
-  const colorIdx = Math.floor(Math.random() * ROW_COLORS.length);
-  blocks.push({
-    x: BLOCK_GAP + col * (blockW + BLOCK_GAP),
-    y: topY - shift, // start above and slide in
-    targetY: topY,
-    w: blockW,
-    h: BLOCK_HEIGHT,
-    color: ROW_COLORS[colorIdx]
-  });
+  // Add 2 (or 3 with 30% chance) new blocks in different random columns
+  const numNew = 2 + (Math.random() < 0.3 ? 1 : 0);
+  const usedCols = new Set();
+  for(let i = 0; i < numNew; i++){
+    let col = Math.floor(Math.random() * BLOCK_COLS);
+    let attempts = 0;
+    while(usedCols.has(col) && attempts < 6){
+      col = Math.floor(Math.random() * BLOCK_COLS);
+      attempts++;
+    }
+    usedCols.add(col);
+    const colorIdx = Math.floor(Math.random() * ROW_COLORS.length);
+    const blk = makeBlock(
+      BLOCK_GAP + col * (blockW + BLOCK_GAP),
+      topY - shift,        // start above
+      ROW_COLORS[colorIdx]
+    );
+    blk.w = blockW;
+    blk.targetY = topY;    // slide into place
+    blocks.push(blk);
+  }
 }
 
 function detectKick(){
@@ -271,6 +304,8 @@ function detectKick(){
   beatAnalyser.getByteFrequencyData(freqData);
   let energy = 0;
   for(let i = 0; i < KICK_BIN_COUNT; i++) energy += freqData[i];
+  const delta = energy - lastEnergy;
+  lastEnergy = energy;
   kickHistory.push(energy);
   if(kickHistory.length > KICK_HISTORY_SIZE) kickHistory.shift();
   if(kickHistory.length < 10) return;
@@ -278,10 +313,26 @@ function detectKick(){
   for(const v of kickHistory) avg += v;
   avg /= kickHistory.length;
   const now = performance.now();
-  if(energy > avg * KICK_THRESHOLD_RATIO && energy > KICK_MIN_ENERGY && now - lastKickTime > KICK_COOLDOWN_MS){
+  // Detect: energy is above moving avg, transient onset (delta), min energy, cooldown
+  if(energy > avg * KICK_THRESHOLD_RATIO &&
+     delta > KICK_DELTA_THRESHOLD &&
+     energy > KICK_MIN_ENERGY &&
+     now - lastKickTime > KICK_COOLDOWN_MS){
     lastKickTime = now;
     onKick();
   }
+}
+
+// Trigger damage effect (block reached bottom)
+function triggerDamage(){
+  const now = performance.now();
+  if(now - lastDamageTime < DAMAGE_COOLDOWN_MS) return;
+  lastDamageTime = now;
+  const stage = document.querySelector('.stage-area');
+  stage.classList.add('damage');
+  setTimeout(() => stage.classList.remove('damage'), 450);
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 320);
 }
 
 // ============================================================
@@ -377,12 +428,18 @@ function update(dt){
   const now = performance.now();
   // --- kick detection (beat-synced block descent) ---
   detectKick();
-  // --- block smooth slide (lerp toward targetY) ---
+  // --- block smooth slide (lerp toward targetY) + danger zone check ---
+  const dangerY = GAME_H * 0.85;
   for(const b of blocks){
     if(b.targetY !== undefined && b.y !== b.targetY){
       const diff = b.targetY - b.y;
       if(Math.abs(diff) < 0.5){ b.y = b.targetY; }
       else { b.y += diff * 0.22; }
+    }
+    // Trigger damage effect once when block crosses danger threshold
+    if(!b.dangerFired && b.y + b.h >= dangerY){
+      b.dangerFired = true;
+      triggerDamage();
     }
   }
   // --- bullets ---
@@ -406,30 +463,48 @@ function update(dt){
       continue;
     }
     // block collision
-    for(let j = 0; j < blocks.length; j++){
+    let bounced = false;
+    let j = 0;
+    while(j < blocks.length){
       const blk = blocks[j];
-      // closest point AABB-circle
       const cx = Math.max(blk.x, Math.min(b.x, blk.x + blk.w));
       const cy = Math.max(blk.y, Math.min(b.y, blk.y + blk.h));
       const dx = b.x - cx, dy = b.y - cy;
       if(dx*dx + dy*dy < BULLET_R*BULLET_R){
-        // Hit! Determine reflection axis by which is closer
-        const overlapX = Math.min(b.x + BULLET_R - blk.x, blk.x + blk.w - (b.x - BULLET_R));
-        const overlapY = Math.min(b.y + BULLET_R - blk.y, blk.y + blk.h - (b.y - BULLET_R));
-        if(overlapX < overlapY){
-          b.vx = -b.vx;
-          b.x += b.vx > 0 ? overlapX : -overlapX;
-        } else {
-          b.vy = -b.vy;
-          b.y += b.vy > 0 ? overlapY : -overlapY;
+        if(blk.type === 'penetrate'){
+          // Bullet passes through, destroy block, NO reflection
+          spawnHitParticles(blk.x + blk.w/2, blk.y + blk.h/2, blk.color);
+          blocks.splice(j, 1);
+          score += 150;
+          $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+          continue; // check more blocks (bullet may chain)
         }
-        // Destroy block
-        spawnHitParticles(blk.x + blk.w/2, blk.y + blk.h/2, blk.color);
-        blocks.splice(j,1);
-        score += 100;
+        // Tough or normal: deal damage
+        blk.hp -= 1;
+        if(blk.hp <= 0){
+          spawnHitParticles(blk.x + blk.w/2, blk.y + blk.h/2, blk.color);
+          blocks.splice(j, 1);
+          score += blk.maxHp > 1 ? 200 : 100;
+        } else {
+          // Tough block damaged: shift color toward lighter
+          if(blk.type === 'tough'){
+            blk.color = TOUGH_COLORS[blk.hp - 1] || blk.color;
+          }
+          spawnHitParticles(blk.x + blk.w/2, blk.y + blk.h/2, blk.color);
+          score += 30;
+        }
         $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+        // Reflect bullet (only first non-penetrate hit)
+        if(!bounced){
+          const overlapX = Math.min(b.x + BULLET_R - blk.x, blk.x + blk.w - (b.x - BULLET_R));
+          const overlapY = Math.min(b.y + BULLET_R - blk.y, blk.y + blk.h - (b.y - BULLET_R));
+          if(overlapX < overlapY){ b.vx = -b.vx; b.x += b.vx > 0 ? overlapX : -overlapX; }
+          else { b.vy = -b.vy; b.y += b.vy > 0 ? overlapY : -overlapY; }
+          bounced = true;
+        }
         break;
       }
+      j++;
     }
   }
   // --- particles ---
@@ -451,6 +526,7 @@ function render(){
   gctx.clearRect(0, 0, GAME_W, GAME_H);
 
   // Blocks (pixel-bevel style)
+  const tnow = performance.now();
   for(const blk of blocks){
     gctx.fillStyle = blk.color;
     gctx.fillRect(blk.x, blk.y, blk.w, blk.h);
@@ -462,6 +538,28 @@ function render(){
     gctx.fillStyle = 'rgba(0,0,0,0.35)';
     gctx.fillRect(blk.x, blk.y + blk.h - 2, blk.w, 2);
     gctx.fillRect(blk.x + blk.w - 2, blk.y, 2, blk.h);
+    // Type-specific decoration
+    if(blk.type === 'penetrate'){
+      // Sparkle dots in 4 corners + pulse center
+      const pulse = (Math.sin(tnow * 0.008) + 1) / 2; // 0..1
+      gctx.fillStyle = '#fff';
+      gctx.fillRect(blk.x + 3, blk.y + 3, 1.5, 1.5);
+      gctx.fillRect(blk.x + blk.w - 4.5, blk.y + 3, 1.5, 1.5);
+      gctx.fillRect(blk.x + 3, blk.y + blk.h - 4.5, 1.5, 1.5);
+      gctx.fillRect(blk.x + blk.w - 4.5, blk.y + blk.h - 4.5, 1.5, 1.5);
+      // Center pulsing dot
+      gctx.fillStyle = `rgba(255,255,255,${0.4 + pulse * 0.6})`;
+      const cs = 2 + pulse * 1.5;
+      gctx.fillRect(blk.x + blk.w/2 - cs/2, blk.y + blk.h/2 - cs/2, cs, cs);
+    } else if(blk.type === 'tough' && blk.hp > 1){
+      // Diagonal hatch pattern indicating durability
+      gctx.fillStyle = 'rgba(255,255,255,0.18)';
+      const stepN = blk.hp; // more lines for higher hp
+      for(let k = 0; k < stepN; k++){
+        const off = (k+1) * (blk.w / (stepN+1));
+        gctx.fillRect(blk.x + off, blk.y + 2, 1, blk.h - 4);
+      }
+    }
   }
 
   // Bullets (glowing square)
@@ -555,6 +653,7 @@ function startStems(){
       src.connect(beatAnalyser);
       kickHistory.length = 0;
       lastKickTime = 0;
+      lastEnergy = 0;
     }
     src.start(t);
     stemSources[s] = src;
