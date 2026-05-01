@@ -62,7 +62,11 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .rocker.off .rocker-bottom{background:#222;color:#888}
 
 /* 5-key pad (beatmania layout) */
-.pad{position:relative;height:120px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0}
+.pad{position:relative;height:120px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0;overflow:visible}
+.spark{position:absolute;width:5px;height:5px;pointer-events:none;z-index:10;transform:translate(-50%,-50%);box-shadow:0 0 4px currentColor;animation:sparkFly 0.5s ease-out forwards}
+@keyframes sparkFly{0%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(calc(-50% + var(--tx)),calc(-50% + var(--ty))) scale(0.2);opacity:0}}
+.key.flash::after{content:"";position:absolute;inset:-6px;background:radial-gradient(circle,rgba(255,217,61,0.9) 0%,rgba(255,107,157,0.4) 40%,transparent 70%);pointer-events:none;animation:keyFlash 0.28s ease-out forwards;z-index:1}
+@keyframes keyFlash{0%{opacity:1;transform:scale(0.4)}100%{opacity:0;transform:scale(1.4)}}
 .key{position:absolute;display:flex;justify-content:center;align-items:flex-end;padding-bottom:6px;font-size:9px;cursor:pointer;transition:transform 0.04s,box-shadow 0.04s;touch-action:none}
 .key.white{background:linear-gradient(180deg,#fff 0%,#ddd 50%,#aaa 100%);border:2px solid #ff6b9d;color:#ff6b9d;box-shadow:0 4px 0 #c8336e}
 .key.black{background:linear-gradient(180deg,#2d1640 0%,#1a0a2e 50%,#000 100%);border:2px solid #c8b6ff;color:#c8b6ff;box-shadow:0 4px 0 #6b5a9e;z-index:2}
@@ -162,6 +166,7 @@ let assetsLoaded = false;
 // ============================================================
 const KEY_X_PCT = [0.17, 0.325, 0.50, 0.675, 0.83]; // canvas X for keys 1..5
 const KEY_COLORS = ['#ff6b9d','#c8b6ff','#ff6b9d','#c8b6ff','#ff6b9d']; // white=pink, black=purple
+const KEY_ANGLES_DEG = [20, 0, 0, 0, -20]; // key1 right-tilt, key5 left-tilt, others straight up
 
 const ROW_COLORS = ['#ff6b9d','#ffd93d','#5DCAA5','#c8b6ff'];
 const BLOCK_COLS = 8;
@@ -228,10 +233,11 @@ function initBlocks(){
 function spawnBullet(keyNum){
   const x = GAME_W * KEY_X_PCT[keyNum-1];
   const y = GAME_H - 4;
+  const angleRad = KEY_ANGLES_DEG[keyNum-1] * Math.PI / 180;
   bullets.push({
     x, y,
-    vx: 0,
-    vy: -BULLET_SPEED,
+    vx: Math.sin(angleRad) * BULLET_SPEED,
+    vy: -Math.cos(angleRad) * BULLET_SPEED,
     born: performance.now(),
     color: '#ffd93d'
   });
@@ -274,6 +280,36 @@ function spawnKeyParticles(keyNum){
       size: 2 + Math.random() * 2,
       sparkle: true
     });
+  }
+}
+
+// DOM-based particles on the keyboard itself (visual feedback at key location)
+function spawnKeyDomFx(keyEl){
+  // 1) Flash overlay on the key
+  keyEl.classList.add('flash');
+  setTimeout(() => keyEl.classList.remove('flash'), 300);
+  // 2) Spark particles flying off the key
+  const padEl = keyEl.parentElement;
+  const keyRect = keyEl.getBoundingClientRect();
+  const padRect = padEl.getBoundingClientRect();
+  const cx = keyRect.left - padRect.left + keyRect.width/2;
+  const cy = keyRect.top - padRect.top + keyRect.height/2;
+  const colors = ['#ffd93d','#ff6b9d','#fff'];
+  for(let i = 0; i < 7; i++){
+    const p = document.createElement('div');
+    p.className = 'spark';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 22 + Math.random() * 22;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 6; // slight upward bias
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+    p.style.color = colors[i % colors.length];
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty('--tx', tx + 'px');
+    p.style.setProperty('--ty', ty + 'px');
+    padEl.appendChild(p);
+    setTimeout(() => p.remove(), 520);
   }
 }
 
@@ -540,6 +576,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const num = parseInt(k.dataset.key, 10);
       playKeySound(num);
       k.classList.add('pressed');
+      // Always show DOM key fx (works even before game starts, gives confirmation)
+      spawnKeyDomFx(k);
       if(isPlaying){
         spawnBullet(num);
         spawnKeyParticles(num);
