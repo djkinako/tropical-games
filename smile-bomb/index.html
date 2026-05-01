@@ -194,20 +194,37 @@ let score = 0;
 // Beat detection
 let beatAnalyser = null;
 let freqData = null;
-const KICK_BIN_COUNT = 2;     // bins 0-1 = 0..86Hz, kick-focused
+const KICK_BIN_COUNT = 2;
 const KICK_HISTORY_SIZE = 30;
 const KICK_COOLDOWN_MS = 200;
-const KICK_THRESHOLD_RATIO = 1.4;  // 1.4x rolling avg
+const KICK_THRESHOLD_RATIO = 1.4;
 const KICK_MIN_ENERGY = 70;
-const KICK_DELTA_THRESHOLD = 20;   // energy must rise sharply (transient)
+const KICK_DELTA_THRESHOLD = 20;
 const kickHistory = [];
 let lastKickTime = 0;
 let lastEnergy = 0;
 let beatFlashTime = 0;
 
+// BPM lock-on (after detecting consistent kicks, switch to metronome)
+const detectedKickTimes = [];
+const BPM_LOCK_KICK_COUNT = 8;       // need 8 detected kicks to attempt lock
+const BPM_LOCK_TOLERANCE = 0.20;     // stdDev/mean < 20% to lock
+const BEATS_PER_BAR = 4;             // 4/4 time signature
+let bpmLocked = false;
+let beatInterval = 0;                // ms per beat
+let nextBeatTime = 0;
+let beatsCounted = 0;
+
 // Damage effect (block touching bottom)
 let lastDamageTime = 0;
 const DAMAGE_COOLDOWN_MS = 700;
+
+// Swipe interaction (perturb bullet trajectories)
+const activeSwipes = new Map();          // pointerId -> {x, y, time}
+const SWIPE_RADIUS = 55;                 // bullets within this distance are affected
+const SWIPE_FORCE_RATIO = 0.45;          // how much swipe vel transfers to bullet
+const SWIPE_SPEED_REF = 1800;            // reference swipe speed (px/sec) for "max" effect
+const BULLET_MAX_SPEED_RATIO = 1.9;      // cap bullet speed at 1.9x base
 
 let canvas, gctx;
 let GAME_W = 0, GAME_H = 0, DPR = 1;
@@ -234,22 +251,20 @@ function resizeCanvas(){
 // ============================================================
 // Block init
 // ============================================================
-// Block type colors
-const TOUGH_COLORS = ['#c8b6ff','#7a5fa5','#3a1f55']; // hp=1 (light) → hp=3 (dark)
-const PENETRATE_COLOR = '#ffd93d';
+// Block type colors (color = type information, no random row colors)
+const NORMAL_COLOR = '#ff6b9d';                          // pink: 1 hit
+const TOUGH_COLORS = ['#c8b6ff','#7a5fa5','#3a1f55'];    // purple gradient: hp 1→2→3 (light→dark)
+const PENETRATE_COLOR = '#ffd93d';                        // gold: penetrate
 
-function makeBlock(x, y, baseColor){
+function makeBlock(x, y){
   const r = Math.random();
   if(r < 0.05){
-    // Penetrate block: bullet passes through
     return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:PENETRATE_COLOR, type:'penetrate', hp:1, maxHp:1};
   }
   if(r < 0.30){
-    // Tough block: 3 hits
     return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:TOUGH_COLORS[2], type:'tough', hp:3, maxHp:3};
   }
-  // Normal block
-  return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:baseColor, type:'normal', hp:1, maxHp:1};
+  return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:NORMAL_COLOR, type:'normal', hp:1, maxHp:1};
 }
 
 function initBlocks(){
@@ -260,7 +275,7 @@ function initBlocks(){
   for(let r = 0; r < BLOCK_ROWS; r++){
     for(let c = 0; c < BLOCK_COLS; c++){
       const y = topY + r * (BLOCK_HEIGHT + BLOCK_GAP);
-      const blk = makeBlock(BLOCK_GAP + c * (blockW + BLOCK_GAP), y, ROW_COLORS[r]);
+      const blk = makeBlock(BLOCK_GAP + c * (blockW + BLOCK_GAP), y);
       blk.w = blockW;
       blocks.push(blk);
     }
@@ -287,19 +302,16 @@ function onKick(){
       attempts++;
     }
     usedCols.add(col);
-    const colorIdx = Math.floor(Math.random() * ROW_COLORS.length);
-    const blk = makeBlock(
-      BLOCK_GAP + col * (blockW + BLOCK_GAP),
-      topY - shift,        // start above
-      ROW_COLORS[colorIdx]
-    );
+    const blk = makeBlock(BLOCK_GAP + col * (blockW + BLOCK_GAP), topY - shift);
     blk.w = blockW;
-    blk.targetY = topY;    // slide into place
+    blk.targetY = topY;
     blocks.push(blk);
   }
 }
 
 function detectKick(){
+  // After BPM lock, real-time detection is bypassed (metronome takes over)
+  if(bpmLocked) return;
   if(!beatAnalyser || !freqData) return;
   beatAnalyser.getByteFrequencyData(freqData);
   let energy = 0;
@@ -313,13 +325,53 @@ function detectKick(){
   for(const v of kickHistory) avg += v;
   avg /= kickHistory.length;
   const now = performance.now();
-  // Detect: energy is above moving avg, transient onset (delta), min energy, cooldown
   if(energy > avg * KICK_THRESHOLD_RATIO &&
      delta > KICK_DELTA_THRESHOLD &&
      energy > KICK_MIN_ENERGY &&
      now - lastKickTime > KICK_COOLDOWN_MS){
     lastKickTime = now;
     onKick();
+    detectedKickTimes.push(now);
+    if(detectedKickTimes.length > 16) detectedKickTimes.shift();
+    if(detectedKickTimes.length >= BPM_LOCK_KICK_COUNT){
+      tryLockBPM();
+    }
+  }
+}
+
+// Attempt to lock onto a stable BPM from detected kick timings
+function tryLockBPM(){
+  const intervals = [];
+  for(let i = 1; i < detectedKickTimes.length; i++){
+    intervals.push(detectedKickTimes[i] - detectedKickTimes[i-1]);
+  }
+  // Sort intervals; take median of middle ~60% to filter outliers
+  const sorted = intervals.slice().sort((a,b) => a-b);
+  const start = Math.floor(sorted.length * 0.2);
+  const end = Math.ceil(sorted.length * 0.8);
+  const trimmed = sorted.slice(start, end);
+  const mean = trimmed.reduce((a,b) => a+b, 0) / trimmed.length;
+  const variance = trimmed.reduce((s,v) => s + (v-mean)*(v-mean), 0) / trimmed.length;
+  const stdDev = Math.sqrt(variance);
+  if(stdDev / mean < BPM_LOCK_TOLERANCE){
+    beatInterval = mean;
+    const lastKick = detectedKickTimes[detectedKickTimes.length - 1];
+    nextBeatTime = lastKick + beatInterval;
+    beatsCounted = 0; // bar counter restarts after lock
+    bpmLocked = true;
+  }
+}
+
+// BPM-locked metronome firing (per bar = every 4 beats)
+function tickBPM(){
+  if(!bpmLocked) return;
+  const now = performance.now();
+  while(now >= nextBeatTime){
+    beatsCounted++;
+    if(beatsCounted % BEATS_PER_BAR === 0){
+      onKick();
+    }
+    nextBeatTime += beatInterval;
   }
 }
 
@@ -391,6 +443,56 @@ function spawnKeyParticles(keyNum){
   }
 }
 
+// Apply swipe force to bullets near pointer (force scales with swipe velocity)
+function applySwipeForce(px, py, sdx, sdy){
+  const swipeSpeed = Math.sqrt(sdx*sdx + sdy*sdy);
+  // Spawn trail particles regardless of bullet hits (visual feedback)
+  spawnSwipeTrail(px, py, swipeSpeed);
+  if(bullets.length === 0) return;
+  const maxSpeed = BULLET_SPEED * BULLET_MAX_SPEED_RATIO;
+  for(const b of bullets){
+    const dx = b.x - px, dy = b.y - py;
+    const distSq = dx*dx + dy*dy;
+    if(distSq < SWIPE_RADIUS * SWIPE_RADIUS){
+      const dist = Math.sqrt(distSq);
+      const falloff = 1 - dist / SWIPE_RADIUS;
+      const force = SWIPE_FORCE_RATIO * falloff;
+      // Blend: bullet velocity moves toward swipe velocity
+      b.vx = b.vx * (1 - force) + sdx * force;
+      b.vy = b.vy * (1 - force) + sdy * force;
+      // Cap speed
+      const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+      if(speed > maxSpeed){
+        b.vx = b.vx / speed * maxSpeed;
+        b.vy = b.vy / speed * maxSpeed;
+      }
+    }
+  }
+}
+
+// Trail particles following the swipe (intensity scales with swipe speed)
+function spawnSwipeTrail(x, y, swipeSpeed){
+  const speedRatio = Math.min(swipeSpeed / SWIPE_SPEED_REF, 1); // 0..1
+  if(speedRatio < 0.05) return; // too slow, no trail
+  const count = Math.floor(2 + speedRatio * 6);
+  // Color: white→gold as speed increases
+  const color = speedRatio > 0.5 ? '#ffd93d' : (speedRatio > 0.25 ? '#fff4b8' : '#ffffff');
+  for(let i = 0; i < count; i++){
+    const offX = (Math.random() - 0.5) * 14;
+    const offY = (Math.random() - 0.5) * 14;
+    particles.push({
+      x: x + offX, y: y + offY,
+      vx: (Math.random() - 0.5) * 60,
+      vy: (Math.random() - 0.5) * 60,
+      color,
+      life: 0,
+      maxLife: 220 + Math.random() * 200,
+      size: 1.5 + speedRatio * 2.5,
+      sparkle: speedRatio > 0.55
+    });
+  }
+}
+
 // DOM-based particles on the keyboard itself (visual feedback at key location)
 function spawnKeyDomFx(keyEl){
   // 1) Flash overlay on the key
@@ -426,8 +528,9 @@ function spawnKeyDomFx(keyEl){
 // ============================================================
 function update(dt){
   const now = performance.now();
-  // --- kick detection (beat-synced block descent) ---
+  // --- kick detection / BPM-locked metronome ---
   detectKick();
+  tickBPM();
   // --- block smooth slide (lerp toward targetY) + danger zone check ---
   // Trigger only when block visually reaches stage bottom (within ~8px of edge)
   const dangerY = GAME_H - 8;
@@ -655,6 +758,11 @@ function startStems(){
       kickHistory.length = 0;
       lastKickTime = 0;
       lastEnergy = 0;
+      detectedKickTimes.length = 0;
+      bpmLocked = false;
+      beatInterval = 0;
+      nextBeatTime = 0;
+      beatsCounted = 0;
     }
     src.start(t);
     stemSources[s] = src;
@@ -769,6 +877,38 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Stop button
   $('stopBtn').addEventListener('click', () => stop());
+
+  // Swipe interaction on stage canvas (perturb bullets, spawn trail)
+  canvas.addEventListener('pointerdown', (e) => {
+    if(e.cancelable) e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    activeSwipes.set(e.pointerId, {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+      time: performance.now()
+    });
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    const swipe = activeSwipes.get(e.pointerId);
+    if(!swipe || !isPlaying) return;
+    if(e.cancelable) e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const nx = e.clientX - rect.left;
+    const ny = e.clientY - rect.top;
+    const now = performance.now();
+    const dt = now - swipe.time;
+    if(dt > 0){
+      const sdx = (nx - swipe.x) / dt * 1000;
+      const sdy = (ny - swipe.y) / dt * 1000;
+      applySwipeForce(nx, ny, sdx, sdy);
+    }
+    swipe.x = nx; swipe.y = ny; swipe.time = now;
+  });
+  const endSwipe = (e) => activeSwipes.delete(e.pointerId);
+  canvas.addEventListener('pointerup', endSwipe);
+  canvas.addEventListener('pointercancel', endSwipe);
+  canvas.addEventListener('pointerleave', endSwipe);
 
   // Resize
   window.addEventListener('resize', () => { if(isPlaying) resizeCanvas(); });
