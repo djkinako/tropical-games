@@ -47,11 +47,11 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.25);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
 .stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:3;opacity:0;transition:opacity 0.05s}
 /* Popup ad overlay (mobile-game-style fake ad) - flat structure with explicit size */
-.ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;max-width:180px;height:180px;background:#fff;border:3px solid #1a0a2e;box-shadow:4px 4px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 14px;color:#1a0a2e;text-align:center;font-size:10px;line-height:1.7;gap:8px;z-index:5;pointer-events:none}
-.ad-popup .ad-label{font-size:7px;color:#ff6b9d;letter-spacing:2px;border:1px solid #ff6b9d;padding:2px 6px}
-.ad-popup .ad-body{font-size:11px;color:#1a0a2e;line-height:1.7;font-weight:bold}
-.ad-popup .ad-hint{font-size:6px;color:#888;margin-top:4px;letter-spacing:1px}
-.ad-close{position:absolute;top:-13px;left:-13px;width:28px;height:28px;background:#ff6b9d;border:2px solid #fff;color:#fff;font-size:16px;font-family:inherit;cursor:pointer;pointer-events:auto;z-index:6;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #1a0a2e}
+.ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;max-width:270px;height:270px;background:#fff;border:3px solid #1a0a2e;box-shadow:6px 6px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;color:#1a0a2e;text-align:center;font-size:11px;line-height:1.8;gap:12px;z-index:5;pointer-events:none}
+.ad-popup .ad-label{font-size:9px;color:#ff6b9d;letter-spacing:2px;border:1px solid #ff6b9d;padding:3px 8px}
+.ad-popup .ad-body{font-size:14px;color:#1a0a2e;line-height:1.7;font-weight:bold}
+.ad-popup .ad-hint{font-size:8px;color:#888;margin-top:6px;letter-spacing:1px}
+.ad-close{position:absolute;top:6px;left:6px;width:22px;height:22px;background:#ff6b9d;border:2px solid #1a0a2e;color:#fff;font-size:13px;font-family:inherit;cursor:pointer;pointer-events:auto;z-index:6;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:1px 1px 0 #1a0a2e}
 .ad-close:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #1a0a2e}
 .ad-counter{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:8px;color:#ffd93d;background:#1a0a2e;padding:3px 8px;border:1px solid #ffd93d;letter-spacing:1px;white-space:nowrap}
 .ad-popup.shake{animation:adShake 0.18s ease-out}
@@ -92,20 +92,30 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 .key.white{background:linear-gradient(180deg,#fff 0%,#ddd 50%,#aaa 100%);border:2px solid #ff6b9d;color:#ff6b9d;box-shadow:0 4px 0 #c8336e}
 .key.black{background:linear-gradient(180deg,#2d1640 0%,#1a0a2e 50%,#000 100%);border:2px solid #c8b6ff;color:#c8b6ff;box-shadow:0 4px 0 #6b5a9e;z-index:2}
 .key.pressed{transform:translateY(3px);box-shadow:0 1px 0 currentColor}
-.key.w1{left:2%;bottom:8px;width:30%;height:62px}
-.key.w2{left:35%;bottom:8px;width:30%;height:62px}
-.key.w3{left:68%;bottom:8px;width:30%;height:62px}
-.key.b1{left:19%;top:8px;width:27%;height:50px}
-.key.b2{left:54%;top:8px;width:27%;height:50px}
+/* Beatmania-style: white keys are tall/full-height, black keys share the same TOP edge but are shorter (~60% height), narrower, and overlap white keys at the top */
+.key.w1{left:2%;top:8px;bottom:8px;width:30%}
+.key.w2{left:35%;top:8px;bottom:8px;width:30%}
+.key.w3{left:68%;top:8px;bottom:8px;width:30%}
+.key.b1{left:22.5%;top:8px;width:22%;height:62%}
+.key.b2{left:55.5%;top:8px;width:22%;height:62%}
 
 .hidden{display:none !important}
 
 /* Cheer characters (kinako & bun) at bottom */
-.cheer-zone{height:42px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px;flex-shrink:0;pointer-events:none}
+.cheer-zone{height:42px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px;flex-shrink:0;pointer-events:none;position:relative}
+.char-side{position:relative;display:flex;align-items:flex-end;height:100%}
 .cheer-char{height:38px;width:auto;image-rendering:pixelated;animation:cheerBob 0.93s ease-in-out infinite;will-change:transform}
-.cheer-char.left{animation-delay:0s}
-.cheer-char.right{animation-delay:0.465s}
+.char-side.left .cheer-char{animation-delay:0s}
+.char-side.right .cheer-char{animation-delay:0.465s}
 @keyframes cheerBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}
+.cheer-bubble{position:absolute;bottom:42px;background:#fff;color:#1a0a2e;padding:5px 9px;font-size:7px;line-height:1.3;border:2px solid #1a0a2e;white-space:nowrap;z-index:11;opacity:0;pointer-events:none;box-shadow:2px 2px 0 #4a1a4e;letter-spacing:1px}
+.cheer-bubble::after{content:"";position:absolute;bottom:-8px;width:8px;height:8px;background:#fff;border-right:2px solid #1a0a2e;border-bottom:2px solid #1a0a2e;transform:rotate(45deg)}
+.char-side.left .cheer-bubble{left:0}
+.char-side.left .cheer-bubble::after{left:14px}
+.char-side.right .cheer-bubble{right:0}
+.char-side.right .cheer-bubble::after{right:14px}
+.cheer-bubble.show{animation:bubblePop 3.2s ease-out forwards}
+@keyframes bubblePop{0%{opacity:0;transform:scale(0.3) translateY(8px)}10%{opacity:1;transform:scale(1.05) translateY(0)}15%{transform:scale(1) translateY(0)}85%{opacity:1;transform:scale(1) translateY(0)}100%{opacity:0;transform:scale(0.9) translateY(-6px)}}
 
 @media (orientation:landscape) and (max-height:500px){
   .rotate-warning{display:flex !important}
@@ -127,7 +137,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.10</div>
+    <div class="title-version">v 0.11</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -180,10 +190,16 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div class="key white w3" data-key="5">5</div>
 </div>
 
-<!-- Cheer characters (kinako & bun) -->
+<!-- Cheer characters (kinako & bun) with speech bubbles -->
 <div class="cheer-zone">
-  <img class="cheer-char left" src="./assets/characters/kinako.png" alt="kinako">
-  <img class="cheer-char right" src="./assets/characters/bun.png" alt="bun">
+  <div class="char-side left">
+    <div class="cheer-bubble" id="cheerBubbleL"></div>
+    <img class="cheer-char" src="./assets/characters/kinako.png" alt="kinako">
+  </div>
+  <div class="char-side right">
+    <div class="cheer-bubble" id="cheerBubbleR"></div>
+    <img class="cheer-char" src="./assets/characters/bun.png" alt="bun">
+  </div>
 </div>
 
 <script>
@@ -252,6 +268,25 @@ let nextBarTime = 0;
 // 0..3=pink (normal), 4..7=gold (penetrate dense), 8..11=purple (tough sparse)
 let cycleBar = 0;
 
+// Total bar counter (for cheer messages, penguin spawn cadence etc.)
+let totalBars = 0;
+let cheerSide = 0; // 0=left, 1=right (alternates)
+
+const CHEER_MESSAGES = [
+  'がんばれ！','いけいけ！','ナイス！','その調子！','あとちょっと！',
+  'トロピカル！','ええやん！','最高！','いいぞ！','LET\'S GO!',
+  'かっこいい！','ファイト！','GO!GO!','サイコー！','ぶち上がる！',
+  'アツい！','輝いとる！','気合いだ！','やったね！','カモン！',
+  // Swipe hint messages (sneak in to teach hidden swipe feature)
+  'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
+];
+
+// Penguin (butterfly-shooter homage): occasional drifting enemy
+let penguins = [];
+const PENGUIN_HIT_WORDS = ['いたい！','いてっ！','ぎゃー！','あーん！','ちょ！','ぐぇ！','やめて！','ムリ！'];
+const PENGUIN_RADIUS = 18;
+const PENGUIN_SPEED = 55;
+
 // Damage effect (block touching bottom)
 let lastDamageTime = 0;
 const DAMAGE_COOLDOWN_MS = 700;
@@ -312,6 +347,32 @@ function makeBlock(x, y, type){
   return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:NORMAL_COLOR, type:'normal', hp:1, maxHp:1};
 }
 
+// Spawn a penguin from left or right edge of the stage
+function spawnPenguin(){
+  const fromLeft = Math.random() < 0.5;
+  penguins.push({
+    x: fromLeft ? -24 : GAME_W + 24,
+    y: GAME_H * (0.45 + Math.random() * 0.15),
+    vx: fromLeft ? PENGUIN_SPEED : -PENGUIN_SPEED,
+    bobPhase: Math.random() * Math.PI * 2,
+    hp: 3, maxHp: 3,
+    flashUntil: 0,
+    hitMsg: null,
+    hitMsgUntil: 0
+  });
+}
+
+// Show cheer message in alternating bubble
+function showCheerMessage(){
+  const msg = CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
+  const bubbleEl = $(cheerSide === 0 ? 'cheerBubbleL' : 'cheerBubbleR');
+  bubbleEl.textContent = msg;
+  bubbleEl.classList.remove('show');
+  void bubbleEl.offsetWidth;
+  bubbleEl.classList.add('show');
+  cheerSide = 1 - cheerSide;
+}
+
 // Pick block type and count based on current 12-bar cycle phase
 function getCurrentPhase(){
   const phase = Math.floor(cycleBar / 4); // 0=pink, 1=gold, 2=purple
@@ -343,6 +404,11 @@ function initBlocks(){
 // On bar boundary: shift all blocks down 1 step, add new blocks per cycle phase
 function onKick(){
   beatFlashTime = performance.now();
+  totalBars++;
+  // Cheer message every 8 bars
+  if(totalBars % 8 === 0) showCheerMessage();
+  // Penguin spawn every 8 bars on offset 4 (between cheers)
+  if(totalBars % 8 === 4) spawnPenguin();
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const shift = BLOCK_HEIGHT + BLOCK_GAP;
@@ -419,10 +485,41 @@ function showAd(){
 
 function hideAd(){
   if(!adActive) return;
-  adActive = false;
+  // Capture position BEFORE deactivating (for explosion center)
   const ad = $('adPopup');
+  const r = ad.getBoundingClientRect();
+  const cr = canvas.getBoundingClientRect();
+  const cx = r.left - cr.left + r.width/2;
+  const cy = r.top - cr.top + r.height/2;
+  adActive = false;
+  // Big explosion!
+  spawnExplosion(cx, cy);
+  // Screen shake
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 320);
   ad.classList.add('dismissing');
   setTimeout(() => { ad.classList.add('hidden'); ad.classList.remove('dismissing'); }, 320);
+}
+
+// Big colorful explosion (used for ad dismiss, penguin death etc.)
+function spawnExplosion(x, y){
+  const colors = ['#ff6b9d','#ffd93d','#5DCAA5','#c8b6ff','#ffffff'];
+  for(let i = 0; i < 44; i++){
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 110 + Math.random() * 280;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      life: 0,
+      maxLife: 600 + Math.random() * 500,
+      size: 2 + Math.random() * 4,
+      sparkle: Math.random() < 0.4
+    });
+  }
 }
 
 function getAdRect(){
@@ -608,6 +705,15 @@ function update(dt){
   tickBPM();
   // --- ad rect (cached for this frame, valid only if active) ---
   const adRect = getAdRect();
+  // --- penguins (move + cull off-screen) ---
+  for(let i = penguins.length - 1; i >= 0; i--){
+    const p = penguins[i];
+    p.x += p.vx * dt;
+    p.bobPhase += dt * 4;
+    if((p.vx > 0 && p.x > GAME_W + 30) || (p.vx < 0 && p.x < -30)){
+      penguins.splice(i, 1);
+    }
+  }
   // --- block smooth slide (lerp toward targetY) + danger zone check ---
   // Trigger only when block visually reaches stage bottom (within ~8px of edge)
   const dangerY = GAME_H - 8;
@@ -642,6 +748,43 @@ function update(dt){
     if(b.y - BULLET_R > GAME_H){
       bullets.splice(i,1);
       continue;
+    }
+    // penguin collision (damage penguin, reflect bullet)
+    {
+      let pengHit = false;
+      for(let pi = penguins.length - 1; pi >= 0; pi--){
+        const peng = penguins[pi];
+        const py = peng.y + Math.sin(peng.bobPhase) * 4;
+        const dx = b.x - peng.x, dy = b.y - py;
+        if(dx*dx + dy*dy < (PENGUIN_RADIUS + BULLET_R) * (PENGUIN_RADIUS + BULLET_R)){
+          peng.hp--;
+          peng.flashUntil = now + 120;
+          peng.hitMsg = PENGUIN_HIT_WORDS[Math.floor(Math.random() * PENGUIN_HIT_WORDS.length)];
+          peng.hitMsgUntil = now + 900;
+          spawnHitParticles(b.x, b.y, '#ff6b9d');
+          if(peng.hp <= 0){
+            spawnExplosion(peng.x, py);
+            penguins.splice(pi, 1);
+            score += 180;
+            $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+          } else {
+            score += 50;
+            $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+          }
+          // Reflect bullet roughly back where it came from
+          const len = Math.sqrt(dx*dx + dy*dy) || 1;
+          const nx = dx / len, ny = dy / len;
+          const dot = b.vx * nx + b.vy * ny;
+          b.vx = b.vx - 2 * dot * nx;
+          b.vy = b.vy - 2 * dot * ny;
+          // Push bullet outside the penguin
+          b.x = peng.x + nx * (PENGUIN_RADIUS + BULLET_R + 1);
+          b.y = py + ny * (PENGUIN_RADIUS + BULLET_R + 1);
+          pengHit = true;
+          break;
+        }
+      }
+      if(pengHit) continue;
     }
     // ad popup collision (block bullet, count as hit)
     if(adRect){
@@ -759,6 +902,34 @@ function render(){
     }
   }
 
+  // Penguins (emoji-rendered with hit flash and speech bubbles)
+  for(const peng of penguins){
+    const py = peng.y + Math.sin(peng.bobPhase) * 4;
+    const isFlash = tnow < peng.flashUntil;
+    if(isFlash){
+      gctx.fillStyle = '#fff';
+      gctx.beginPath();
+      gctx.arc(peng.x, py, PENGUIN_RADIUS + 2, 0, Math.PI * 2);
+      gctx.fill();
+    }
+    gctx.font = '28px sans-serif';
+    gctx.textAlign = 'center';
+    gctx.textBaseline = 'middle';
+    gctx.fillText('🐧', peng.x, py);
+    // Hit message bubble
+    if(tnow < peng.hitMsgUntil && peng.hitMsg){
+      const w = peng.hitMsg.length * 9 + 14;
+      const bx = peng.x - w/2, by = py - 32;
+      gctx.fillStyle = '#fff';
+      gctx.fillRect(bx, by, w, 14);
+      gctx.strokeStyle = '#1a0a2e';
+      gctx.lineWidth = 1.5;
+      gctx.strokeRect(bx, by, w, 14);
+      gctx.fillStyle = '#EF4444';
+      gctx.font = 'bold 9px sans-serif';
+      gctx.fillText(peng.hitMsg, peng.x, by + 7);
+    }
+  }
   // Bullets (glowing square, color cycles through tropical hues じんわり)
   const cycleHue = (tnow / 3000 * 360) % 360;
   const coreColor = `hsl(${cycleHue}, 95%, 65%)`;
@@ -883,9 +1054,14 @@ function startGame(){
   score = 0;
   bullets = [];
   particles = [];
+  penguins = [];
+  totalBars = 0;
+  cheerSide = 0;
   adShown = false;
   hideAd();
   $('adPopup').classList.add('hidden'); // ensure hidden
+  $('cheerBubbleL').classList.remove('show');
+  $('cheerBubbleR').classList.remove('show');
   $('scoreDisplay').textContent = 'SCORE 00000';
   resizeCanvas();
   initBlocks();
