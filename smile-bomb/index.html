@@ -75,12 +75,13 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 .stem.bass .stem-label{color:#c8b6ff}
 .stem.synth .stem-label{color:#5DCAA5}
 .stem.vocal .stem-label{color:#ffd93d}
-.rocker{width:46px;height:30px;background:#1a0a2e;border:2px solid #c8b6ff;position:relative;cursor:pointer;display:flex;flex-direction:column;overflow:hidden}
-.rocker-half{flex:1;display:flex;justify-content:center;align-items:center;font-size:7px;transition:all 0.05s;color:#555}
-.rocker.on .rocker-top{background:#ff6b9d;color:#fff}
-.rocker.on .rocker-bottom{background:#1a0a2e;color:#555}
-.rocker.off .rocker-top{background:#1a0a2e;color:#555}
-.rocker.off .rocker-bottom{background:#222;color:#888}
+/* Mixer Fader (P4 from samples) - selected by user */
+.fader{width:28px;height:54px;background:#1a0a2e;border:2px solid #c8b6ff;position:relative;cursor:pointer;flex-shrink:0;touch-action:none}
+.fader-track{position:absolute;left:50%;top:5px;bottom:5px;width:3px;background:linear-gradient(180deg,#ff6b9d,#444);transform:translateX(-50%)}
+.fader-handle{position:absolute;left:50%;top:4px;width:22px;height:12px;background:linear-gradient(180deg,#fff,#ddd);border:1px solid #1a0a2e;transform:translateX(-50%);transition:top 0.18s cubic-bezier(.5,2,.5,1);box-shadow:0 2px 0 #1a0a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:#1a0a2e;font-weight:bold}
+.fader-handle::after{content:"━"}
+.fader.off .fader-handle{top:calc(100% - 17px);background:linear-gradient(180deg,#666,#333);color:#999;box-shadow:0 1px 0 #1a0a2e}
+.fader.off .fader-track{background:linear-gradient(180deg,#444,#222)}
 
 /* 5-key pad (beatmania layout) */
 .pad{position:relative;height:120px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0;overflow:visible}
@@ -138,7 +139,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.12</div>
+    <div class="title-version">v 0.13</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -186,12 +187,12 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   </div>
 </div>
 
-<!-- Stems -->
+<!-- Stems (Mixer Fader UI) -->
 <div class="stems">
-  <div class="stem beat"><div class="stem-label">BEAT</div><div class="rocker on" data-stem="beat"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div></div>
-  <div class="stem bass"><div class="stem-label">BASS</div><div class="rocker on" data-stem="bass"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div></div>
-  <div class="stem synth"><div class="stem-label">SYNTH</div><div class="rocker on" data-stem="synth"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div></div>
-  <div class="stem vocal"><div class="stem-label">VOCAL</div><div class="rocker on" data-stem="vocal"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div></div>
+  <div class="stem beat"><div class="stem-label">BEAT</div><div class="fader on" data-stem="beat"><div class="fader-track"></div><div class="fader-handle"></div></div></div>
+  <div class="stem bass"><div class="stem-label">BASS</div><div class="fader on" data-stem="bass"><div class="fader-track"></div><div class="fader-handle"></div></div></div>
+  <div class="stem synth"><div class="stem-label">SYNTH</div><div class="fader on" data-stem="synth"><div class="fader-track"></div><div class="fader-handle"></div></div></div>
+  <div class="stem vocal"><div class="stem-label">VOCAL</div><div class="fader on" data-stem="vocal"><div class="fader-track"></div><div class="fader-handle"></div></div></div>
 </div>
 
 <!-- 5-key pad -->
@@ -495,8 +496,9 @@ function onKick(){
   totalBars++;
   // Cheer message every 8 bars
   if(totalBars % 8 === 0) showCheerMessage();
-  // Penguin spawn every 8 bars on offset 4 (between cheers)
-  if(totalBars % 8 === 4) spawnPenguin();
+  // Penguin squad every 8 bars (offset 4) AFTER song hits 90s mark
+  const songTime = ctx ? Math.max(0, ctx.currentTime - playStartTime) : 0;
+  if(totalBars % 8 === 4 && songTime >= 90) spawnPenguin();
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const shift = BLOCK_HEIGHT + BLOCK_GAP;
@@ -1093,7 +1095,7 @@ async function loadAll(){
 // ============================================================
 function startStems(){
   const stemStates = {};
-  document.querySelectorAll('.rocker').forEach(r => {
+  document.querySelectorAll('.fader').forEach(r => {
     stemStates[r.dataset.stem] = r.classList.contains('on') ? 1 : 0;
   });
   const t = ctx.currentTime + 0.08;
@@ -1200,15 +1202,13 @@ window.addEventListener('DOMContentLoaded', () => {
   gctx = canvas.getContext('2d');
   gctx.imageSmoothingEnabled = false;
 
-  // Stem switches
-  document.querySelectorAll('.rocker').forEach(r => {
+  // Stem switches (Mixer Fader: tap to toggle ON/OFF, handle slides)
+  document.querySelectorAll('.fader').forEach(r => {
     r.addEventListener('click', () => {
       const stem = r.dataset.stem;
       const isOn = !r.classList.contains('on');
       r.classList.toggle('on', isOn);
       r.classList.toggle('off', !isOn);
-      r.querySelector('.rocker-top').textContent = isOn ? 'ON' : '';
-      r.querySelector('.rocker-bottom').textContent = isOn ? '' : 'OFF';
       if(stemGains[stem]){
         stemGains[stem].gain.value = isOn ? 1 : 0;
       }
