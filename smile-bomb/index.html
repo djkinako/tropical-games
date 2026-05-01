@@ -59,6 +59,13 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .ad-popup.dismissing{animation:adShrink 0.3s ease-in forwards}
 @keyframes adShrink{to{transform:translate(-50%,-50%) scale(0);opacity:0}}
 
+/* Boss WARNING overlay */
+.boss-warning{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(255,40,60,0.35);pointer-events:none;animation:warnFlash 0.32s steps(2) infinite;text-align:center;padding:20px}
+.boss-warning .warn-icon{font-size:32px;color:#ff3060;text-shadow:2px 2px 0 #1a0a2e,4px 4px 0 #4a1a4e;letter-spacing:4px;margin-bottom:8px}
+.boss-warning .warn-sub{font-size:11px;color:#fff;letter-spacing:4px;text-shadow:1px 1px 0 #4a1a4e}
+.boss-warning .warn-tiny{font-size:7px;color:#ffd93d;letter-spacing:2px;margin-top:8px}
+@keyframes warnFlash{50%{background:rgba(255,40,60,0.05)}}
+
 .stage-area.damage{border-color:#ff3060;animation:damageBorder 0.4s ease-out}
 .stage-area.damage::after{background:radial-gradient(ellipse at center,transparent 20%,rgba(255,40,60,0.6) 100%);animation:damageVignette 0.4s ease-out}
 @keyframes damageBorder{0%{box-shadow:0 0 0 4px rgba(255,48,96,0.7),inset 0 0 30px rgba(255,48,96,0.5)}100%{box-shadow:0 0 0 0 rgba(255,48,96,0),inset 0 0 0 rgba(255,48,96,0)}}
@@ -139,7 +146,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.13</div>
+    <div class="title-version">v 0.14</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -170,8 +177,13 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <button class="ad-close" id="adClose" aria-label="close">×</button>
     <div class="ad-label">SPONSORED</div>
     <div class="ad-body">ここに<br>広告が入る</div>
-    <div class="ad-hint">弾10発で消去</div>
-    <div class="ad-counter" id="adCounter">0 / 10</div>
+    <div class="ad-hint">弾20発で消去</div>
+    <div class="ad-counter" id="adCounter">0 / 20</div>
+  </div>
+  <div id="bossWarning" class="boss-warning hidden">
+    <div class="warn-icon">⚠ WARNING ⚠</div>
+    <div class="warn-sub">BOSS APPROACHING</div>
+    <div class="warn-tiny">▸ 鬼が来るで！ ◂</div>
   </div>
 </div>
 
@@ -283,6 +295,19 @@ const CHEER_MESSAGES = [
   'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
 ];
 
+// Boss battle (3:30 mark)
+const BOSS_TRIGGER_TIME_S = 210;
+const BOSS_HP = 200;
+const BOSS_RADIUS = 42;
+const BOSS_EMOJI = '👹';
+const FIREWORK_TOTAL = 30;
+let boss = null;
+let bossTriggered = false;
+let bossBattleActive = false;
+let postBossFireworks = false;
+let fireworkQueue = [];
+let fireworksDoneTime = 0;
+
 // Penguin (butterfly-shooter homage): pixel-sprite formation enemies
 let penguins = [];
 const PENGUIN_HIT_WORDS = ['いたい！','いてっ！','ぎゃー！','あーん！','ちょ！','ぐぇ！','やめて！','ムリ！'];
@@ -384,7 +409,7 @@ const BULLET_MAX_SPEED_RATIO = 1.9;      // cap bullet speed at 1.9x base
 
 // Popup ad
 const AD_TRIGGER_TIME_S = 30;            // seconds into song to show ad
-const AD_HIT_THRESHOLD = 10;
+const AD_HIT_THRESHOLD = 20;
 let adShown = false;                     // has the 30s ad been triggered yet
 let adActive = false;                    // is ad currently visible
 let adHitCount = 0;
@@ -429,6 +454,146 @@ function makeBlock(x, y, type){
     return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:TOUGH_COLORS[2], type:'tough', hp:3, maxHp:3};
   }
   return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:NORMAL_COLOR, type:'normal', hp:1, maxHp:1};
+}
+
+// =========================================================
+// BOSS BATTLE
+// =========================================================
+function triggerBossBattle(){
+  bossTriggered = true;
+  // Scatter all blocks as colorful particles
+  for(const blk of blocks){
+    for(let i = 0; i < 8; i++){
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 100 + Math.random() * 220;
+      particles.push({
+        x: blk.x + blk.w/2,
+        y: blk.y + blk.h/2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: blk.color,
+        life: 0,
+        maxLife: 700 + Math.random() * 400,
+        size: 2 + Math.random() * 3,
+        sparkle: Math.random() < 0.3
+      });
+    }
+  }
+  blocks = [];
+  // Show WARNING overlay
+  $('bossWarning').classList.remove('hidden');
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 320);
+  // Spawn boss after warning
+  setTimeout(() => {
+    $('bossWarning').classList.add('hidden');
+    boss = {
+      x: GAME_W / 2,
+      y: 70,
+      hp: BOSS_HP,
+      maxHp: BOSS_HP,
+      phase: 0,
+      flashUntil: 0
+    };
+    bossBattleActive = true;
+  }, 2400);
+}
+
+function defeatBoss(){
+  if(!boss) return;
+  bossBattleActive = false;
+  // Big explosion at boss position (multiple layers)
+  for(let i = 0; i < 4; i++){
+    spawnExplosion(boss.x + (Math.random() - 0.5) * 30, boss.y + (Math.random() - 0.5) * 30);
+  }
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 600);
+  score += 5000;
+  $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+  // Start fireworks
+  startFireworks();
+  // Boss disappears after a beat
+  setTimeout(() => { boss = null; }, 400);
+}
+
+function updateBoss(dt){
+  if(!boss || !bossBattleActive) return;
+  boss.phase += dt;
+  // Shooting-game style: figure-8 / sine motion
+  boss.x = GAME_W / 2 + Math.sin(boss.phase * 0.9) * (GAME_W / 2 - BOSS_RADIUS - 8);
+  boss.y = 70 + Math.sin(boss.phase * 1.4) * 22;
+}
+
+function startFireworks(){
+  postBossFireworks = true;
+  fireworkQueue = [];
+  const FW_COLORS = ['#ff6b9d','#ffd93d','#5DCAA5','#c8b6ff','#ffffff','#EC4899','#ff8800'];
+  const now = performance.now();
+  for(let i = 0; i < FIREWORK_TOTAL; i++){
+    const fwTime = now + i * 130;
+    const launchX = 30 + Math.random() * (GAME_W - 60);
+    const burstX = launchX + (Math.random() - 0.5) * 80;
+    const burstY = GAME_H * (0.18 + Math.random() * 0.45);
+    fireworkQueue.push({
+      launchTime: fwTime,
+      burstTime: fwTime + 380,
+      launchX, launchY: GAME_H,
+      burstX, burstY,
+      color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+      bursted: false
+    });
+  }
+  fireworksDoneTime = now + FIREWORK_TOTAL * 130 + 1800;
+}
+
+function tickFireworks(now){
+  if(!postBossFireworks) return;
+  for(const fw of fireworkQueue){
+    // Trail particles between launch and burst
+    if(!fw.bursted && now >= fw.launchTime && now < fw.burstTime){
+      const t = (now - fw.launchTime) / (fw.burstTime - fw.launchTime);
+      const tx = fw.launchX + (fw.burstX - fw.launchX) * t;
+      const ty = fw.launchY + (fw.burstY - fw.launchY) * t;
+      particles.push({
+        x: tx + (Math.random() - 0.5) * 3,
+        y: ty,
+        vx: (Math.random() - 0.5) * 30,
+        vy: (Math.random() - 0.2) * 20,
+        color: '#fff',
+        life: 0,
+        maxLife: 220,
+        size: 2
+      });
+    }
+    if(!fw.bursted && now >= fw.burstTime){
+      fw.bursted = true;
+      burstFirework(fw.burstX, fw.burstY, fw.color);
+    }
+  }
+  if(now >= fireworksDoneTime){
+    postBossFireworks = false;
+    fireworkQueue = [];
+  }
+}
+
+function burstFirework(x, y, color){
+  const particleCount = 26 + Math.floor(Math.random() * 12);
+  for(let i = 0; i < particleCount; i++){
+    const angle = (i / particleCount) * Math.PI * 2 + Math.random() * 0.2;
+    const speed = 70 + Math.random() * 110;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color,
+      life: 0,
+      maxLife: 800 + Math.random() * 500,
+      size: 2 + Math.random() * 2.5,
+      sparkle: true
+    });
+  }
 }
 
 // Spawn a squad of 5 penguins in formation (butterfly-shooter style)
@@ -499,6 +664,8 @@ function onKick(){
   // Penguin squad every 8 bars (offset 4) AFTER song hits 90s mark
   const songTime = ctx ? Math.max(0, ctx.currentTime - playStartTime) : 0;
   if(totalBars % 8 === 4 && songTime >= 90) spawnPenguin();
+  // Skip block descent during boss battle and post-boss fireworks
+  if(bossBattleActive || postBossFireworks) return;
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const shift = BLOCK_HEIGHT + BLOCK_GAP;
@@ -572,6 +739,8 @@ function showAd(){
   const ad = $('adPopup');
   ad.classList.remove('hidden','dismissing');
 }
+
+
 
 function hideAd(){
   if(!adActive) return;
@@ -795,6 +964,8 @@ function update(dt){
   tickBPM();
   // --- ad rect (cached for this frame, valid only if active) ---
   const adRect = getAdRect();
+  // --- boss update (sine-wave movement) ---
+  updateBoss(dt);
   // --- penguins (move + bob + cull off-screen) ---
   const pengHalfW = PENGUIN_SPRITE.w * PENGUIN_SCALE / 2;
   for(let i = penguins.length - 1; i >= 0; i--){
@@ -839,6 +1010,29 @@ function update(dt){
     if(b.y - BULLET_R > GAME_H){
       bullets.splice(i,1);
       continue;
+    }
+    // boss collision (damage boss, reflect bullet)
+    if(boss && bossBattleActive){
+      const bdx = b.x - boss.x;
+      const bdy = b.y - boss.y;
+      if(bdx*bdx + bdy*bdy < (BOSS_RADIUS + BULLET_R) * (BOSS_RADIUS + BULLET_R)){
+        boss.hp = Math.max(0, boss.hp - 1);
+        boss.flashUntil = now + 60;
+        spawnHitParticles(b.x, b.y, '#ff6b9d');
+        score += 10;
+        $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+        const len = Math.sqrt(bdx*bdx + bdy*bdy) || 1;
+        const nx = bdx / len, ny = bdy / len;
+        const dot = b.vx * nx + b.vy * ny;
+        b.vx = b.vx - 2 * dot * nx;
+        b.vy = b.vy - 2 * dot * ny;
+        b.x = boss.x + nx * (BOSS_RADIUS + BULLET_R + 1);
+        b.y = boss.y + ny * (BOSS_RADIUS + BULLET_R + 1);
+        if(boss.hp <= 0){
+          defeatBoss();
+        }
+        continue;
+      }
     }
     // penguin collision (damage penguin, reflect bullet)
     {
@@ -993,6 +1187,37 @@ function render(){
     }
   }
 
+  // Boss: giant emoji + HP bar
+  if(boss && bossBattleActive){
+    const isFlash = tnow < boss.flashUntil;
+    if(isFlash){
+      gctx.fillStyle = '#fff';
+      gctx.beginPath();
+      gctx.arc(boss.x, boss.y, BOSS_RADIUS + 6, 0, Math.PI * 2);
+      gctx.fill();
+    }
+    gctx.font = '92px sans-serif';
+    gctx.textAlign = 'center';
+    gctx.textBaseline = 'middle';
+    gctx.fillText(BOSS_EMOJI, boss.x, boss.y);
+    // HP bar at top
+    const barW = GAME_W * 0.7;
+    const barH = 9;
+    const barX = (GAME_W - barW) / 2;
+    const barY = 6;
+    gctx.fillStyle = '#1a0a2e';
+    gctx.fillRect(barX, barY, barW, barH);
+    gctx.strokeStyle = '#fff';
+    gctx.lineWidth = 1;
+    gctx.strokeRect(barX, barY, barW, barH);
+    const pct = boss.hp / boss.maxHp;
+    gctx.fillStyle = pct > 0.5 ? '#5DCAA5' : (pct > 0.25 ? '#ffd93d' : '#ff3060');
+    gctx.fillRect(barX + 1, barY + 1, (barW - 2) * pct, barH - 2);
+    gctx.fillStyle = '#fff';
+    gctx.font = 'bold 8px monospace';
+    gctx.textAlign = 'left';
+    gctx.fillText('BOSS HP ' + boss.hp, barX, barY + barH + 8);
+  }
   // Penguins: pixel sprite with hit flash + butterfly-shooter-style speech bubble
   for(const peng of penguins){
     const py = peng.baseY + Math.sin(peng.bobPhase) * 6;
@@ -1061,6 +1286,12 @@ function gameLoop(now){
     adShown = true;
     showAd();
   }
+  // Trigger boss battle at 3:30 once
+  if(!bossTriggered && cur >= BOSS_TRIGGER_TIME_S){
+    triggerBossBattle();
+  }
+  // Tick fireworks (post-boss celebration)
+  tickFireworks(now);
   gameRafId = requestAnimationFrame(gameLoop);
 }
 
@@ -1138,6 +1369,13 @@ function startGame(){
   totalBars = 0;
   cheerSide = 0;
   adShown = false;
+  // Boss state reset
+  boss = null;
+  bossTriggered = false;
+  bossBattleActive = false;
+  postBossFireworks = false;
+  fireworkQueue = [];
+  $('bossWarning').classList.add('hidden');
   hideAd();
   $('adPopup').classList.add('hidden'); // ensure hidden
   $('cheerBubbleL').classList.remove('show');
