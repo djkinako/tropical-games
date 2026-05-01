@@ -205,15 +205,17 @@ let lastKickTime = 0;
 let lastEnergy = 0;
 let beatFlashTime = 0;
 
-// BPM lock-on (after detecting consistent kicks, switch to metronome)
-const detectedKickTimes = [];
-const BPM_LOCK_KICK_COUNT = 8;       // need 8 detected kicks to attempt lock
-const BPM_LOCK_TOLERANCE = 0.20;     // stdDev/mean < 20% to lock
-const BEATS_PER_BAR = 4;             // 4/4 time signature
-let bpmLocked = false;
-let beatInterval = 0;                // ms per beat
-let nextBeatTime = 0;
-let beatsCounted = 0;
+// Fixed BPM (per song). For 微笑み: 129 BPM, 4/4 time
+const SONG_BPM = 129;
+const BEAT_INTERVAL_MS = 60000 / SONG_BPM;       // ~465.12 ms
+const BAR_INTERVAL_MS = BEAT_INTERVAL_MS * 4;    // ~1860.47 ms (1 measure)
+// First detected kick is used only for phase alignment; then metronome takes over
+let firstBarFired = false;
+let nextBarTime = 0;
+
+// Color cycle: 12-bar pattern (4 bars each phase)
+// 0..3=pink (normal), 4..7=gold (penetrate dense), 8..11=purple (tough sparse)
+let cycleBar = 0;
 
 // Damage effect (block touching bottom)
 let lastDamageTime = 0;
@@ -256,15 +258,26 @@ const NORMAL_COLOR = '#ff6b9d';                          // pink: 1 hit
 const TOUGH_COLORS = ['#c8b6ff','#7a5fa5','#3a1f55'];    // purple gradient: hp 1→2→3 (light→dark)
 const PENETRATE_COLOR = '#ffd93d';                        // gold: penetrate
 
-function makeBlock(x, y){
-  const r = Math.random();
-  if(r < 0.05){
+function makeBlock(x, y, type){
+  if(type === 'penetrate'){
     return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:PENETRATE_COLOR, type:'penetrate', hp:1, maxHp:1};
   }
-  if(r < 0.30){
+  if(type === 'tough'){
     return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:TOUGH_COLORS[2], type:'tough', hp:3, maxHp:3};
   }
   return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:NORMAL_COLOR, type:'normal', hp:1, maxHp:1};
+}
+
+// Pick block type and count based on current 12-bar cycle phase
+function getCurrentPhase(){
+  const phase = Math.floor(cycleBar / 4); // 0=pink, 1=gold, 2=purple
+  if(phase === 0){
+    return {type:'normal', count: 2 + (Math.random() < 0.4 ? 1 : 0)};       // 2-3
+  } else if(phase === 1){
+    return {type:'penetrate', count: 5 + Math.floor(Math.random() * 3)};    // 5-7 dense
+  } else {
+    return {type:'tough', count: 1 + (Math.random() < 0.5 ? 1 : 0)};        // 1-2 sparse
+  }
 }
 
 function initBlocks(){
@@ -272,17 +285,18 @@ function initBlocks(){
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const topY = GAME_H * BLOCK_TOP_OFFSET_PCT;
+  // All initial blocks are normal pink (clean look)
   for(let r = 0; r < BLOCK_ROWS; r++){
     for(let c = 0; c < BLOCK_COLS; c++){
       const y = topY + r * (BLOCK_HEIGHT + BLOCK_GAP);
-      const blk = makeBlock(BLOCK_GAP + c * (blockW + BLOCK_GAP), y);
+      const blk = makeBlock(BLOCK_GAP + c * (blockW + BLOCK_GAP), y, 'normal');
       blk.w = blockW;
       blocks.push(blk);
     }
   }
 }
 
-// On kick: shift all existing blocks down 1 step, add 2-3 new at random columns
+// On bar boundary: shift all blocks down 1 step, add new blocks per cycle phase
 function onKick(){
   beatFlashTime = performance.now();
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
@@ -291,27 +305,30 @@ function onKick(){
   const topY = GAME_H * BLOCK_TOP_OFFSET_PCT;
   for(const b of blocks){ b.targetY += shift; }
   blocks = blocks.filter(b => b.targetY < GAME_H + 20);
-  // Add 2 (or 3 with 30% chance) new blocks in different random columns
-  const numNew = 2 + (Math.random() < 0.3 ? 1 : 0);
+  // Determine type & count for current phase (4-bar windows: pink, gold, purple)
+  const {type, count} = getCurrentPhase();
   const usedCols = new Set();
-  for(let i = 0; i < numNew; i++){
+  for(let i = 0; i < count; i++){
     let col = Math.floor(Math.random() * BLOCK_COLS);
-    let attempts = 0;
-    while(usedCols.has(col) && attempts < 6){
+    let tries = 0;
+    while(usedCols.has(col) && tries < 20 && usedCols.size < BLOCK_COLS){
       col = Math.floor(Math.random() * BLOCK_COLS);
-      attempts++;
+      tries++;
     }
     usedCols.add(col);
-    const blk = makeBlock(BLOCK_GAP + col * (blockW + BLOCK_GAP), topY - shift);
+    const blk = makeBlock(BLOCK_GAP + col * (blockW + BLOCK_GAP), topY - shift, type);
     blk.w = blockW;
     blk.targetY = topY;
     blocks.push(blk);
   }
+  // Advance the 12-bar cycle counter
+  cycleBar = (cycleBar + 1) % 12;
 }
 
+// Detect first kick only (for phase alignment with the song)
+// Once first kick is detected, switch to fixed-BPM bar-rate metronome
 function detectKick(){
-  // After BPM lock, real-time detection is bypassed (metronome takes over)
-  if(bpmLocked) return;
+  if(firstBarFired) return;
   if(!beatAnalyser || !freqData) return;
   beatAnalyser.getByteFrequencyData(freqData);
   let energy = 0;
@@ -330,48 +347,20 @@ function detectKick(){
      energy > KICK_MIN_ENERGY &&
      now - lastKickTime > KICK_COOLDOWN_MS){
     lastKickTime = now;
-    onKick();
-    detectedKickTimes.push(now);
-    if(detectedKickTimes.length > 16) detectedKickTimes.shift();
-    if(detectedKickTimes.length >= BPM_LOCK_KICK_COUNT){
-      tryLockBPM();
-    }
+    // Phase-align: treat this kick as bar 1 boundary
+    firstBarFired = true;
+    nextBarTime = now + BAR_INTERVAL_MS;
+    onKick(); // fire the first bar immediately
   }
 }
 
-// Attempt to lock onto a stable BPM from detected kick timings
-function tryLockBPM(){
-  const intervals = [];
-  for(let i = 1; i < detectedKickTimes.length; i++){
-    intervals.push(detectedKickTimes[i] - detectedKickTimes[i-1]);
-  }
-  // Sort intervals; take median of middle ~60% to filter outliers
-  const sorted = intervals.slice().sort((a,b) => a-b);
-  const start = Math.floor(sorted.length * 0.2);
-  const end = Math.ceil(sorted.length * 0.8);
-  const trimmed = sorted.slice(start, end);
-  const mean = trimmed.reduce((a,b) => a+b, 0) / trimmed.length;
-  const variance = trimmed.reduce((s,v) => s + (v-mean)*(v-mean), 0) / trimmed.length;
-  const stdDev = Math.sqrt(variance);
-  if(stdDev / mean < BPM_LOCK_TOLERANCE){
-    beatInterval = mean;
-    const lastKick = detectedKickTimes[detectedKickTimes.length - 1];
-    nextBeatTime = lastKick + beatInterval;
-    beatsCounted = 0; // bar counter restarts after lock
-    bpmLocked = true;
-  }
-}
-
-// BPM-locked metronome firing (per bar = every 4 beats)
+// Fixed-BPM metronome: fire onKick on each bar boundary
 function tickBPM(){
-  if(!bpmLocked) return;
+  if(!firstBarFired) return;
   const now = performance.now();
-  while(now >= nextBeatTime){
-    beatsCounted++;
-    if(beatsCounted % BEATS_PER_BAR === 0){
-      onKick();
-    }
-    nextBeatTime += beatInterval;
+  while(now >= nextBarTime){
+    onKick();
+    nextBarTime += BAR_INTERVAL_MS;
   }
 }
 
@@ -758,11 +747,9 @@ function startStems(){
       kickHistory.length = 0;
       lastKickTime = 0;
       lastEnergy = 0;
-      detectedKickTimes.length = 0;
-      bpmLocked = false;
-      beatInterval = 0;
-      nextBeatTime = 0;
-      beatsCounted = 0;
+      firstBarFired = false;
+      nextBarTime = 0;
+      cycleBar = 0;
     }
     src.start(t);
     stemSources[s] = src;
