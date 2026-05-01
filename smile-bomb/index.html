@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>BLOCK RUSH - KINAKO MIX</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+html,body{height:100%;background:linear-gradient(180deg,#1a0a2e 0%,#2d1b4e 50%,#4a1a4e 100%);color:#fff;font-family:'Press Start 2P',monospace;image-rendering:pixelated;overflow:hidden}
+body{display:flex;flex-direction:column;height:100vh;padding:10px;gap:8px;font-size:10px;line-height:1.6}
+
+/* ===== Start screen ===== */
+.start-screen{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(180deg,#1a0a2e 0%,#2d1b4e 50%,#4a1a4e 100%);z-index:100;padding:24px;gap:24px;text-align:center}
+.brand{font-size:9px;color:#c8b6ff;letter-spacing:3px}
+.title-main{font-size:26px;color:#ffd93d;text-shadow:3px 3px 0 #ff6b9d,4px 4px 0 #4a1a4e;line-height:1.3}
+.title-sub{font-size:11px;color:#ff6b9d;letter-spacing:2px}
+.title-phase{font-size:7px;margin-top:8px;color:#5DCAA5}
+.warning-box{border:2px solid #ffd93d;padding:14px;background:rgba(45,22,64,0.8);position:relative;font-size:8px;line-height:2;color:#fff;max-width:280px}
+.warning-box::before,.warning-box::after,.warning-box>.dot1,.warning-box>.dot2{content:"";position:absolute;width:5px;height:5px;background:#ffd93d}
+.warning-box::before{top:3px;left:3px}.warning-box::after{bottom:3px;right:3px}
+.warning-box>.dot1{top:3px;right:3px}.warning-box>.dot2{bottom:3px;left:3px}
+.warning-title{color:#ffd93d;text-align:center;margin-bottom:8px;font-size:9px}
+.press-start{font-size:11px;color:#ffd93d;animation:blink 0.8s steps(2) infinite;cursor:pointer;padding:12px 20px}
+@keyframes blink{50%{opacity:0.2}}
+
+.loading-bar{width:240px;height:14px;border:2px solid #ff6b9d;background:#1a0a2e;position:relative}
+.loading-fill{height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd93d,#5DCAA5,#c8b6ff);width:0%;transition:width 0.15s}
+.loading-text{font-size:8px;color:#c8b6ff;margin-top:6px}
+
+/* ===== Game UI ===== */
+.hud{display:flex;justify-content:space-between;align-items:center;font-size:9px;padding:0 4px;flex-shrink:0}
+.score{color:#ffd93d;text-shadow:1px 1px 0 #ff6b9d}
+.time{color:#c8b6ff}
+.progress{width:100%;height:6px;border:1px solid #ff6b9d;background:#1a0a2e;position:relative;flex-shrink:0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd93d,#5DCAA5,#c8b6ff);width:0%;transition:width 0.1s linear}
+
+.stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 70%);border:2px solid #4a1a4e;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:9px;color:#c8b6ff;text-align:center;padding:12px;gap:6px;position:relative;overflow:hidden;min-height:120px}
+.stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.3);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.stage-label{font-size:11px;color:#ffd93d;text-shadow:1px 1px 0 #ff6b9d}
+.stage-sub{font-size:7px;color:#5DCAA5}
+
+/* Stems panel */
+.stems{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0}
+.stem{display:flex;flex-direction:column;align-items:center;gap:4px}
+.stem-label{font-size:7px;letter-spacing:1px}
+.stem.beat .stem-label{color:#ff6b9d}
+.stem.bass .stem-label{color:#c8b6ff}
+.stem.synth .stem-label{color:#5DCAA5}
+.stem.vocal .stem-label{color:#ffd93d}
+.rocker{width:46px;height:30px;background:#1a0a2e;border:2px solid #c8b6ff;position:relative;cursor:pointer;display:flex;flex-direction:column;overflow:hidden}
+.rocker-half{flex:1;display:flex;justify-content:center;align-items:center;font-size:7px;transition:all 0.05s;color:#555}
+.rocker.on .rocker-top{background:#ff6b9d;color:#fff}
+.rocker.on .rocker-bottom{background:#1a0a2e;color:#555}
+.rocker.off .rocker-top{background:#1a0a2e;color:#555}
+.rocker.off .rocker-bottom{background:#222;color:#888}
+
+/* 5-key pad (beatmania layout) */
+.pad{position:relative;height:120px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0}
+.key{position:absolute;display:flex;justify-content:center;align-items:flex-end;padding-bottom:6px;font-size:9px;cursor:pointer;transition:transform 0.04s,box-shadow 0.04s;touch-action:none}
+.key.white{background:linear-gradient(180deg,#fff 0%,#ddd 50%,#aaa 100%);border:2px solid #ff6b9d;color:#ff6b9d;box-shadow:0 4px 0 #c8336e}
+.key.black{background:linear-gradient(180deg,#2d1640 0%,#1a0a2e 50%,#000 100%);border:2px solid #c8b6ff;color:#c8b6ff;box-shadow:0 4px 0 #6b5a9e;z-index:2}
+.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 currentColor}
+.key.w1{left:2%;bottom:8px;width:30%;height:62px}
+.key.w2{left:35%;bottom:8px;width:30%;height:62px}
+.key.w3{left:68%;bottom:8px;width:30%;height:62px}
+.key.b1{left:19%;top:8px;width:27%;height:50px}
+.key.b2{left:54%;top:8px;width:27%;height:50px}
+
+.controls{display:flex;justify-content:center;padding:2px;flex-shrink:0;gap:8px}
+.btn{padding:6px 18px;background:#2d1640;border:2px solid #ff6b9d;color:#ff6b9d;font-family:inherit;font-size:8px;cursor:pointer;letter-spacing:1px}
+.btn:active{transform:translate(1px,1px)}
+.btn.primary{background:#ff6b9d;color:#fff;border-color:#fff}
+
+.hidden{display:none !important}
+
+/* Orientation warning */
+@media (orientation:landscape) and (max-height:500px){
+  .rotate-warning{display:flex !important}
+}
+.rotate-warning{display:none;position:fixed;inset:0;background:#1a0a2e;z-index:200;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:24px;gap:16px;font-size:11px;color:#ffd93d}
+</style>
+</head>
+<body>
+
+<!-- Orientation warning -->
+<div class="rotate-warning">
+  ⚠ PLEASE ROTATE ⚠<br>
+  <span style="font-size:9px;color:#c8b6ff">縦に持ってね</span>
+</div>
+
+<!-- Start screen -->
+<div id="startScreen" class="start-screen">
+  <div class="brand">TROPICAL DREAM CLUB</div>
+  <div>
+    <div class="title-main">BLOCK<br>RUSH</div>
+    <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
+    <div class="title-phase">▸ PHASE 1A · AUDIO TEST ◂</div>
+  </div>
+  <div class="warning-box">
+    <span class="dot1"></span><span class="dot2"></span>
+    <div class="warning-title">『 PRESS START 』</div>
+    ▸ TURN OFF SILENT MODE<br>
+    ▸ HOLD PHONE VERTICALLY<br>
+    ▸ USE HEADPHONES
+  </div>
+  <div id="loadingBar" class="loading-bar hidden"><div class="loading-fill" id="loadingFill"></div></div>
+  <div id="loadingText" class="loading-text hidden">LOADING 0%</div>
+  <div id="pressStart" class="press-start">▸ TAP TO START ◂</div>
+</div>
+
+<!-- Game UI -->
+<div class="hud">
+  <div class="score">SCORE 00000</div>
+  <div class="time" id="timeDisplay">00:00 / 00:00</div>
+</div>
+<div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="stage-area">
+  <div class="stage-label">◇ STAGE ◇</div>
+  <div class="stage-sub">Phase 1a 確認エリア</div>
+  <div class="stage-sub">ステム同期 + 5鍵動作テスト</div>
+  <div class="stage-sub" style="opacity:0.6;margin-top:4px">ブロック崩しは Phase 1b で実装</div>
+</div>
+
+<!-- Stems -->
+<div class="stems">
+  <div class="stem beat">
+    <div class="stem-label">BEAT</div>
+    <div class="rocker on" data-stem="beat"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div>
+  </div>
+  <div class="stem bass">
+    <div class="stem-label">BASS</div>
+    <div class="rocker on" data-stem="bass"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div>
+  </div>
+  <div class="stem synth">
+    <div class="stem-label">SYNTH</div>
+    <div class="rocker on" data-stem="synth"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div>
+  </div>
+  <div class="stem vocal">
+    <div class="stem-label">VOCAL</div>
+    <div class="rocker on" data-stem="vocal"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div>
+  </div>
+</div>
+
+<!-- 5-key pad -->
+<div class="pad">
+  <div class="key black b1" data-key="2">2</div>
+  <div class="key black b2" data-key="4">4</div>
+  <div class="key white w1" data-key="1">1</div>
+  <div class="key white w2" data-key="3">3</div>
+  <div class="key white w3" data-key="5">5</div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="stopBtn">STOP</button>
+</div>
+
+<script>
+const STEMS = ['beat','bass','synth','vocal'];
+const KEYS = ['key1','key2','key3','key4','key5'];
+
+let ctx = null;
+const stemBuffers = {};
+const keyBuffers = {};
+let stemSources = {};
+let stemGains = {};
+let playStartTime = 0;
+let songDuration = 0;
+let rafId = null;
+let isPlaying = false;
+let assetsLoaded = false;
+
+const $ = (id) => document.getElementById(id);
+const startScreen = $('startScreen');
+const pressStart = $('pressStart');
+const loadingBar = $('loadingBar');
+const loadingFill = $('loadingFill');
+const loadingText = $('loadingText');
+const timeDisplay = $('timeDisplay');
+const progressFill = $('progressFill');
+
+async function loadAudio(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Failed: '+url);
+  const arr = await res.arrayBuffer();
+  return await ctx.decodeAudioData(arr);
+}
+
+async function loadAll(){
+  const tasks = [];
+  STEMS.forEach(s => tasks.push(loadAudio('./audio/stems/'+s+'.mp3').then(b => stemBuffers[s] = b)));
+  KEYS.forEach(k => tasks.push(loadAudio('./audio/keys/'+k+'.mp3').then(b => keyBuffers[k] = b)));
+  let done = 0;
+  const total = tasks.length;
+  tasks.forEach(p => p.then(() => {
+    done++;
+    const pct = Math.floor(done / total * 100);
+    loadingFill.style.width = pct + '%';
+    loadingText.textContent = 'LOADING ' + pct + '%';
+  }));
+  await Promise.all(tasks);
+  assetsLoaded = true;
+}
+
+function startStems(){
+  // Apply current rocker states to gain values
+  const stemStates = {};
+  document.querySelectorAll('.rocker').forEach(r => {
+    stemStates[r.dataset.stem] = r.classList.contains('on') ? 1 : 0;
+  });
+
+  const t = ctx.currentTime + 0.08; // small lookahead for sync
+  STEMS.forEach(s => {
+    const src = ctx.createBufferSource();
+    src.buffer = stemBuffers[s];
+    const gain = ctx.createGain();
+    gain.gain.value = stemStates[s];
+    src.connect(gain).connect(ctx.destination);
+    src.start(t);
+    stemSources[s] = src;
+    stemGains[s] = gain;
+  });
+  songDuration = stemBuffers.beat.duration;
+  playStartTime = t;
+  isPlaying = true;
+  stemSources.beat.onended = () => stop();
+  tickLoop();
+}
+
+function stop(){
+  if(!isPlaying) return;
+  isPlaying = false;
+  STEMS.forEach(s => {
+    try { stemSources[s].stop(); } catch(e){}
+  });
+  cancelAnimationFrame(rafId);
+  // Show start screen with restart prompt
+  startScreen.classList.remove('hidden');
+  pressStart.textContent = '▸ TAP TO RESTART ◂';
+  pressStart.classList.remove('hidden');
+  loadingBar.classList.add('hidden');
+  loadingText.classList.add('hidden');
+  timeDisplay.textContent = '00:00 / ' + fmt(songDuration);
+  progressFill.style.width = '0%';
+}
+
+function fmt(t){
+  if(!t || isNaN(t)) return '00:00';
+  const m = Math.floor(t/60).toString().padStart(2,'0');
+  const s = Math.floor(t%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+function tickLoop(){
+  if(!isPlaying) return;
+  const cur = Math.max(0, ctx.currentTime - playStartTime);
+  const clamped = Math.min(cur, songDuration);
+  timeDisplay.textContent = fmt(clamped) + ' / ' + fmt(songDuration);
+  progressFill.style.width = (clamped/songDuration*100) + '%';
+  rafId = requestAnimationFrame(tickLoop);
+}
+
+function playKey(num){
+  const buf = keyBuffers['key'+num];
+  if(!buf || !ctx) return;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
+// Stem switches
+document.querySelectorAll('.rocker').forEach(r => {
+  r.addEventListener('click', () => {
+    const stem = r.dataset.stem;
+    const isOn = !r.classList.contains('on');
+    r.classList.toggle('on', isOn);
+    r.classList.toggle('off', !isOn);
+    r.querySelector('.rocker-top').textContent = isOn ? 'ON' : '';
+    r.querySelector('.rocker-bottom').textContent = isOn ? '' : 'OFF';
+    if(stemGains[stem]){
+      stemGains[stem].gain.value = isOn ? 1 : 0;
+    }
+  });
+});
+
+// 5-key pad (multi-touch via pointer events)
+document.querySelectorAll('.key').forEach(k => {
+  const press = (e) => {
+    if(e.cancelable) e.preventDefault();
+    playKey(k.dataset.key);
+    k.classList.add('pressed');
+  };
+  const release = () => k.classList.remove('pressed');
+  k.addEventListener('pointerdown', press);
+  k.addEventListener('pointerup', release);
+  k.addEventListener('pointercancel', release);
+  k.addEventListener('pointerleave', release);
+});
+
+// Stop button
+$('stopBtn').addEventListener('click', () => stop());
+
+// Start
+pressStart.addEventListener('click', async () => {
+  if(!ctx){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(ctx.state === 'suspended') await ctx.resume();
+
+  pressStart.classList.add('hidden');
+  if(!assetsLoaded){
+    loadingBar.classList.remove('hidden');
+    loadingText.classList.remove('hidden');
+    try {
+      await loadAll();
+    } catch(err) {
+      loadingText.textContent = 'ERROR: '+err.message;
+      return;
+    }
+    loadingBar.classList.add('hidden');
+    loadingText.classList.add('hidden');
+  }
+  startScreen.classList.add('hidden');
+  startStems();
+});
+</script>
+</body>
+</html>
