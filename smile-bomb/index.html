@@ -45,6 +45,20 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 75%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
 .stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.25);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
 .stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:3;opacity:0;transition:opacity 0.05s}
+/* Popup ad overlay (mobile-game-style fake ad) */
+.ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;max-width:200px;aspect-ratio:4/5;z-index:5;pointer-events:none}
+.ad-popup .ad-frame{position:relative;width:100%;height:100%;background:#fff;border:3px solid #1a0a2e;box-shadow:4px 4px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;color:#1a0a2e;text-align:center;font-size:9px;line-height:1.7;gap:8px}
+.ad-popup .ad-label{font-size:7px;color:#ff6b9d;letter-spacing:2px;border:1px solid #ff6b9d;padding:2px 6px}
+.ad-popup .ad-body{font-size:10px;color:#1a0a2e;line-height:1.8}
+.ad-popup .ad-hint{font-size:6px;color:#888;margin-top:4px;letter-spacing:1px}
+.ad-close{position:absolute;top:-12px;left:-12px;width:28px;height:28px;background:#ff6b9d;border:2px solid #fff;color:#fff;font-size:16px;font-family:inherit;cursor:pointer;pointer-events:auto;z-index:6;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #1a0a2e}
+.ad-close:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #1a0a2e}
+.ad-counter{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:8px;color:#ffd93d;background:#1a0a2e;padding:3px 8px;border:1px solid #ffd93d;letter-spacing:1px;white-space:nowrap}
+.ad-popup.shake{animation:adShake 0.18s ease-out}
+@keyframes adShake{0%{transform:translate(-50%,-50%)}25%{transform:translate(calc(-50% - 3px),calc(-50% + 1px))}50%{transform:translate(calc(-50% + 3px),calc(-50% - 1px))}75%{transform:translate(calc(-50% - 2px),calc(-50% + 2px))}100%{transform:translate(-50%,-50%)}}
+.ad-popup.dismissing{animation:adShrink 0.3s ease-in forwards}
+@keyframes adShrink{to{transform:translate(-50%,-50%) scale(0);opacity:0}}
+
 .stage-area.damage{border-color:#ff3060;animation:damageBorder 0.4s ease-out}
 .stage-area.damage::after{background:radial-gradient(ellipse at center,transparent 20%,rgba(255,40,60,0.6) 100%);animation:damageVignette 0.4s ease-out}
 @keyframes damageBorder{0%{box-shadow:0 0 0 4px rgba(255,48,96,0.7),inset 0 0 30px rgba(255,48,96,0.5)}100%{box-shadow:0 0 0 0 rgba(255,48,96,0),inset 0 0 0 rgba(255,48,96,0)}}
@@ -132,6 +146,15 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 
 <div class="stage-area">
   <canvas id="gameCanvas"></canvas>
+  <div id="adPopup" class="ad-popup hidden">
+    <button class="ad-close" id="adClose" aria-label="close">×</button>
+    <div class="ad-frame">
+      <div class="ad-label">SPONSORED</div>
+      <div class="ad-body">ここに<br>広告が入る</div>
+      <div class="ad-hint">弾10発で消去</div>
+    </div>
+    <div class="ad-counter" id="adCounter">0 / 10</div>
+  </div>
 </div>
 
 <!-- Stems -->
@@ -228,6 +251,15 @@ const SWIPE_FORCE_RATIO = 0.45;          // how much swipe vel transfers to bull
 const SWIPE_SPEED_REF = 1800;            // reference swipe speed (px/sec) for "max" effect
 const BULLET_MAX_SPEED_RATIO = 1.9;      // cap bullet speed at 1.9x base
 
+// Popup ad
+const AD_TRIGGER_TIME_S = 30;            // seconds into song to show ad
+const AD_HIT_THRESHOLD = 10;
+let adShown = false;                     // has the 30s ad been triggered yet
+let adActive = false;                    // is ad currently visible
+let adHitCount = 0;
+let lastAdHitTime = 0;                   // for per-bullet-frame debounce
+const AD_HIT_DEBOUNCE_MS = 30;
+
 let canvas, gctx;
 let GAME_W = 0, GAME_H = 0, DPR = 1;
 let lastTime = 0;
@@ -274,9 +306,9 @@ function getCurrentPhase(){
   if(phase === 0){
     return {type:'normal', count: 2 + (Math.random() < 0.4 ? 1 : 0)};       // 2-3
   } else if(phase === 1){
-    return {type:'penetrate', count: 5 + Math.floor(Math.random() * 3)};    // 5-7 dense
+    return {type:'penetrate', count: BLOCK_COLS};                            // 8 (fill row)
   } else {
-    return {type:'tough', count: 1 + (Math.random() < 0.5 ? 1 : 0)};        // 1-2 sparse
+    return {type:'tough', count: 1};                                         // 1 (sparse)
   }
 }
 
@@ -361,6 +393,48 @@ function tickBPM(){
   while(now >= nextBarTime){
     onKick();
     nextBarTime += BAR_INTERVAL_MS;
+  }
+}
+
+// Popup ad: show/hide/hit handlers
+function showAd(){
+  adActive = true;
+  adHitCount = 0;
+  $('adCounter').textContent = '0 / ' + AD_HIT_THRESHOLD;
+  const ad = $('adPopup');
+  ad.classList.remove('hidden','dismissing');
+}
+
+function hideAd(){
+  if(!adActive) return;
+  adActive = false;
+  const ad = $('adPopup');
+  ad.classList.add('dismissing');
+  setTimeout(() => { ad.classList.add('hidden'); ad.classList.remove('dismissing'); }, 320);
+}
+
+function getAdRect(){
+  if(!adActive) return null;
+  const ad = $('adPopup');
+  const adRect = ad.getBoundingClientRect();
+  const cRect = canvas.getBoundingClientRect();
+  return {
+    x: adRect.left - cRect.left,
+    y: adRect.top - cRect.top,
+    w: adRect.width,
+    h: adRect.height
+  };
+}
+
+function onAdHit(){
+  adHitCount++;
+  $('adCounter').textContent = adHitCount + ' / ' + AD_HIT_THRESHOLD;
+  const ad = $('adPopup');
+  ad.classList.remove('shake');
+  void ad.offsetWidth; // restart animation
+  ad.classList.add('shake');
+  if(adHitCount >= AD_HIT_THRESHOLD){
+    hideAd();
   }
 }
 
@@ -520,6 +594,8 @@ function update(dt){
   // --- kick detection / BPM-locked metronome ---
   detectKick();
   tickBPM();
+  // --- ad rect (cached for this frame, valid only if active) ---
+  const adRect = getAdRect();
   // --- block smooth slide (lerp toward targetY) + danger zone check ---
   // Trigger only when block visually reaches stage bottom (within ~8px of edge)
   const dangerY = GAME_H - 8;
@@ -554,6 +630,22 @@ function update(dt){
     if(b.y - BULLET_R > GAME_H){
       bullets.splice(i,1);
       continue;
+    }
+    // ad popup collision (block bullet, count as hit)
+    if(adRect){
+      if(b.x + BULLET_R > adRect.x && b.x - BULLET_R < adRect.x + adRect.w &&
+         b.y + BULLET_R > adRect.y && b.y - BULLET_R < adRect.y + adRect.h){
+        const overlapX = Math.min(b.x + BULLET_R - adRect.x, adRect.x + adRect.w - (b.x - BULLET_R));
+        const overlapY = Math.min(b.y + BULLET_R - adRect.y, adRect.y + adRect.h - (b.y - BULLET_R));
+        if(overlapX < overlapY){ b.vx = -b.vx; b.x += b.vx > 0 ? overlapX : -overlapX; }
+        else { b.vy = -b.vy; b.y += b.vy > 0 ? overlapY : -overlapY; }
+        spawnHitParticles(b.x, b.y, '#ff6b9d');
+        if(now - lastAdHitTime > AD_HIT_DEBOUNCE_MS){
+          lastAdHitTime = now;
+          onAdHit();
+        }
+        continue;
+      }
     }
     // block collision
     let bounced = false;
@@ -693,6 +785,11 @@ function gameLoop(now){
   const clamped = Math.min(cur, songDuration);
   $('timeDisplay').textContent = fmt(clamped) + ' / ' + fmt(songDuration);
   $('progressFill').style.width = (clamped/songDuration*100) + '%';
+  // Trigger popup ad at 30s once
+  if(!adShown && cur >= AD_TRIGGER_TIME_S){
+    adShown = true;
+    showAd();
+  }
   gameRafId = requestAnimationFrame(gameLoop);
 }
 
@@ -766,6 +863,9 @@ function startGame(){
   score = 0;
   bullets = [];
   particles = [];
+  adShown = false;
+  hideAd();
+  $('adPopup').classList.add('hidden'); // ensure hidden
   $('scoreDisplay').textContent = 'SCORE 00000';
   resizeCanvas();
   initBlocks();
@@ -864,6 +964,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Stop button
   $('stopBtn').addEventListener('click', () => stop());
+
+  // Ad close button
+  $('adClose').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAd();
+  });
+  $('adClose').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hideAd();
+  });
 
   // Swipe interaction on stage canvas (perturb bullets, spawn trail)
   canvas.addEventListener('pointerdown', (e) => {
