@@ -17,6 +17,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .title-main{font-size:26px;color:#ffd93d;text-shadow:3px 3px 0 #ff6b9d,4px 4px 0 #4a1a4e;line-height:1.3}
 .title-sub{font-size:11px;color:#ff6b9d;letter-spacing:2px}
 .title-phase{font-size:7px;margin-top:8px;color:#5DCAA5}
+.title-version{font-size:7px;margin-top:6px;color:#888;letter-spacing:2px}
 .warning-box{border:3px solid #ff6b9d;padding:18px 16px;background:rgba(45,22,64,0.95);position:relative;font-size:9px;line-height:1.9;color:#fff;max-width:300px}
 .warning-box::before,.warning-box::after,.warning-box>.dot1,.warning-box>.dot2{content:"";position:absolute;width:6px;height:6px;background:#ffd93d}
 .warning-box::before{top:4px;left:4px}.warning-box::after{bottom:4px;right:4px}
@@ -45,13 +46,12 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 75%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
 .stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.25);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
 .stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:3;opacity:0;transition:opacity 0.05s}
-/* Popup ad overlay (mobile-game-style fake ad) */
-.ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;max-width:200px;aspect-ratio:4/5;z-index:5;pointer-events:none}
-.ad-popup .ad-frame{position:relative;width:100%;height:100%;background:#fff;border:3px solid #1a0a2e;box-shadow:4px 4px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;color:#1a0a2e;text-align:center;font-size:9px;line-height:1.7;gap:8px}
+/* Popup ad overlay (mobile-game-style fake ad) - flat structure with explicit size */
+.ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;max-width:180px;height:180px;background:#fff;border:3px solid #1a0a2e;box-shadow:4px 4px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 14px;color:#1a0a2e;text-align:center;font-size:10px;line-height:1.7;gap:8px;z-index:5;pointer-events:none}
 .ad-popup .ad-label{font-size:7px;color:#ff6b9d;letter-spacing:2px;border:1px solid #ff6b9d;padding:2px 6px}
-.ad-popup .ad-body{font-size:10px;color:#1a0a2e;line-height:1.8}
+.ad-popup .ad-body{font-size:11px;color:#1a0a2e;line-height:1.7;font-weight:bold}
 .ad-popup .ad-hint{font-size:6px;color:#888;margin-top:4px;letter-spacing:1px}
-.ad-close{position:absolute;top:-12px;left:-12px;width:28px;height:28px;background:#ff6b9d;border:2px solid #fff;color:#fff;font-size:16px;font-family:inherit;cursor:pointer;pointer-events:auto;z-index:6;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #1a0a2e}
+.ad-close{position:absolute;top:-13px;left:-13px;width:28px;height:28px;background:#ff6b9d;border:2px solid #fff;color:#fff;font-size:16px;font-family:inherit;cursor:pointer;pointer-events:auto;z-index:6;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #1a0a2e}
 .ad-close:active{transform:translate(1px,1px);box-shadow:1px 1px 0 #1a0a2e}
 .ad-counter{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:8px;color:#ffd93d;background:#1a0a2e;padding:3px 8px;border:1px solid #ffd93d;letter-spacing:1px;white-space:nowrap}
 .ad-popup.shake{animation:adShake 0.18s ease-out}
@@ -100,6 +100,13 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 
 .hidden{display:none !important}
 
+/* Cheer characters (kinako & bun) at bottom */
+.cheer-zone{height:42px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px;flex-shrink:0;pointer-events:none}
+.cheer-char{height:38px;width:auto;image-rendering:pixelated;animation:cheerBob 0.93s ease-in-out infinite;will-change:transform}
+.cheer-char.left{animation-delay:0s}
+.cheer-char.right{animation-delay:0.465s}
+@keyframes cheerBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}
+
 @media (orientation:landscape) and (max-height:500px){
   .rotate-warning{display:flex !important}
 }
@@ -119,7 +126,8 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div>
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
-    <div class="title-phase">▸ PHASE 1B · BLOCK BREAKER ◂</div>
+    <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
+    <div class="title-version">v 0.10</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -148,11 +156,9 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <canvas id="gameCanvas"></canvas>
   <div id="adPopup" class="ad-popup hidden">
     <button class="ad-close" id="adClose" aria-label="close">×</button>
-    <div class="ad-frame">
-      <div class="ad-label">SPONSORED</div>
-      <div class="ad-body">ここに<br>広告が入る</div>
-      <div class="ad-hint">弾10発で消去</div>
-    </div>
+    <div class="ad-label">SPONSORED</div>
+    <div class="ad-body">ここに<br>広告が入る</div>
+    <div class="ad-hint">弾10発で消去</div>
     <div class="ad-counter" id="adCounter">0 / 10</div>
   </div>
 </div>
@@ -172,6 +178,12 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div class="key white w1" data-key="1">1</div>
   <div class="key white w2" data-key="3">3</div>
   <div class="key white w3" data-key="5">5</div>
+</div>
+
+<!-- Cheer characters (kinako & bun) -->
+<div class="cheer-zone">
+  <img class="cheer-char left" src="./assets/characters/kinako.png" alt="kinako">
+  <img class="cheer-char right" src="./assets/characters/bun.png" alt="bun">
 </div>
 
 <script>
@@ -308,7 +320,7 @@ function getCurrentPhase(){
   } else if(phase === 1){
     return {type:'penetrate', count: BLOCK_COLS};                            // 8 (fill row)
   } else {
-    return {type:'tough', count: 1};                                         // 1 (sparse)
+    return {type:'tough', count: 3};                                         // 3 (moderate)
   }
 }
 
@@ -747,13 +759,21 @@ function render(){
     }
   }
 
-  // Bullets (glowing square)
+  // Bullets (glowing square, color cycles through tropical hues じんわり)
+  const cycleHue = (tnow / 3000 * 360) % 360;
+  const coreColor = `hsl(${cycleHue}, 95%, 65%)`;
+  const glowColor = `hsla(${cycleHue}, 90%, 78%, 0.45)`;
+  const haloColor = `hsla(${cycleHue}, 90%, 80%, 0.18)`;
   for(const b of bullets){
-    gctx.fillStyle = b.color;
-    gctx.fillRect(b.x - BULLET_R, b.y - BULLET_R, BULLET_R*2, BULLET_R*2);
+    // outer halo
+    gctx.fillStyle = haloColor;
+    gctx.fillRect(b.x - BULLET_R-3, b.y - BULLET_R-3, BULLET_R*2+6, BULLET_R*2+6);
     // glow
-    gctx.fillStyle = 'rgba(255,217,61,0.3)';
+    gctx.fillStyle = glowColor;
     gctx.fillRect(b.x - BULLET_R-2, b.y - BULLET_R-2, BULLET_R*2+4, BULLET_R*2+4);
+    // core
+    gctx.fillStyle = coreColor;
+    gctx.fillRect(b.x - BULLET_R, b.y - BULLET_R, BULLET_R*2, BULLET_R*2);
   }
 
   // Particles
