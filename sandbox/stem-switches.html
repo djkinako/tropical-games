@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>STEM Switch UI Samples</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+html,body{background:linear-gradient(180deg,#1a0a2e,#2d1b4e,#4a1a4e);color:#fff;font-family:'Press Start 2P',monospace;image-rendering:pixelated;min-height:100vh}
+body{padding:20px 14px 40px;max-width:480px;margin:0 auto}
+h1{font-size:14px;color:#ffd93d;text-shadow:2px 2px 0 #ff6b9d;letter-spacing:2px;margin-bottom:10px;text-align:center}
+.intro{font-size:8px;color:#c8b6ff;line-height:1.8;text-align:center;margin-bottom:24px;letter-spacing:1px}
+.pattern-panel{background:#2d1640;padding:16px 12px;margin-bottom:18px;border:2px solid #c8b6ff;box-shadow:4px 4px 0 #4a1a4e}
+.pattern-num{font-size:14px;color:#ffd93d;letter-spacing:3px;margin-bottom:2px}
+.pattern-name{font-size:11px;color:#ff6b9d;margin-bottom:6px;letter-spacing:1px}
+.pattern-desc{font-size:7px;color:#c8b6ff;line-height:1.7;margin-bottom:14px;letter-spacing:1px}
+.stems-row{display:flex;gap:14px;justify-content:center;align-items:flex-end;padding:18px 8px;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 90%);border:1px dashed rgba(200,182,255,0.25);min-height:100px}
+.stem-cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+.stem-label{font-size:7px;letter-spacing:1px}
+.stem-label.beat{color:#ff6b9d}
+.stem-label.bass{color:#c8b6ff}
+.stem-label.synth{color:#5DCAA5}
+.stem-label.vocal{color:#ffd93d}
+
+/* ========== P1: ROCKER (現状) ========== */
+.p1{width:46px;height:32px;background:#1a0a2e;border:2px solid #c8b6ff;display:flex;flex-direction:column;cursor:pointer;overflow:hidden}
+.p1-half{flex:1;display:flex;align-items:center;justify-content:center;font-size:7px;transition:all 0.05s;color:#555}
+.p1[data-on="1"] .p1-top{background:#ff6b9d;color:#fff}
+.p1[data-on="0"] .p1-bottom{background:#222;color:#888}
+
+/* ========== P2: TOGGLE LEVER (左右倒し) ========== */
+.p2{width:54px;height:42px;background:linear-gradient(180deg,#3a1f55,#1a0a2e);border:2px solid #c8b6ff;position:relative;cursor:pointer;border-radius:0}
+.p2-base{position:absolute;width:30px;height:5px;left:50%;bottom:8px;transform:translateX(-50%);background:#444;border:1px solid #222}
+.p2-pivot{position:absolute;width:6px;height:6px;left:50%;bottom:6px;transform:translateX(-50%);background:#666;border:1px solid #1a0a2e;border-radius:50%;z-index:2}
+.p2-lever{position:absolute;width:6px;height:24px;left:50%;bottom:9px;background:linear-gradient(180deg,#ffd93d,#c89800);transform-origin:bottom center;transform:translateX(-50%) rotate(-32deg);transition:transform 0.12s cubic-bezier(.5,2,.5,1);box-shadow:1px 0 0 #1a0a2e}
+.p2-lever::after{content:"";position:absolute;top:-3px;left:50%;width:10px;height:10px;background:#ff6b9d;border:1px solid #1a0a2e;transform:translateX(-50%)}
+.p2[data-on="0"] .p2-lever{transform:translateX(-50%) rotate(32deg);background:linear-gradient(180deg,#666,#333)}
+.p2[data-on="0"] .p2-lever::after{background:#444}
+
+/* ========== P3: ARCADE LED BUTTON ========== */
+.p3{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffaacc 0%,#ff6b9d 50%,#c8336e 100%);border:3px solid #1a0a2e;cursor:pointer;position:relative;box-shadow:0 4px 0 #1a0a2e,0 0 12px rgba(255,107,157,0.6)}
+.p3[data-on="0"]{background:radial-gradient(circle at 35% 30%,#666 0%,#333 50%,#1a0a2e 100%);box-shadow:0 2px 0 #1a0a2e;transform:translateY(2px)}
+.p3::before{content:"";position:absolute;inset:-7px;border:2px solid #ffd93d;border-radius:50%;opacity:0.85;box-shadow:0 0 6px #ffd93d}
+.p3[data-on="0"]::before{border-color:#333;box-shadow:none;opacity:0.4}
+
+/* ========== P4: MIXER FADER ========== */
+.p4{width:30px;height:80px;background:#1a0a2e;border:2px solid #c8b6ff;position:relative;cursor:pointer}
+.p4-track{position:absolute;left:50%;top:8px;bottom:8px;width:3px;background:linear-gradient(180deg,#ff6b9d,#444);transform:translateX(-50%)}
+.p4-handle{position:absolute;left:50%;top:5px;width:24px;height:14px;background:linear-gradient(180deg,#fff,#ddd);border:1px solid #1a0a2e;transform:translateX(-50%);transition:top 0.18s cubic-bezier(.5,2,.5,1);box-shadow:0 2px 0 #1a0a2e;display:flex;align-items:center;justify-content:center;font-size:6px;color:#1a0a2e}
+.p4-handle::after{content:"━";font-weight:bold}
+.p4[data-on="0"] .p4-handle{top:calc(100% - 19px);background:linear-gradient(180deg,#666,#333);color:#999}
+
+/* ========== P5: ROTARY KNOB ========== */
+.p5{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#7a5fa5 0%,#4a1a4e 50%,#2d1640 100%);border:3px solid #1a0a2e;cursor:pointer;position:relative;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.4),0 0 8px rgba(255,217,61,0.4)}
+.p5-indicator{position:absolute;left:50%;top:5px;width:3px;height:14px;background:#ffd93d;transform-origin:bottom center;transform:translateX(-50%) rotate(0deg);transition:transform 0.25s cubic-bezier(.4,1.6,.5,1);box-shadow:0 0 4px #ffd93d}
+.p5[data-on="0"]{box-shadow:inset 0 -3px 0 rgba(0,0,0,0.4)}
+.p5[data-on="0"] .p5-indicator{transform:translateX(-50%) rotate(160deg);background:#555;box-shadow:none}
+
+/* ========== P6: CARTRIDGE SLOT ========== */
+.p6{width:36px;height:64px;background:#1a0a2e;border:2px solid #c8b6ff;position:relative;cursor:pointer;overflow:hidden;padding:3px}
+.p6-cart{position:absolute;left:5px;right:5px;height:36px;background:linear-gradient(180deg,#ff6b9d 0%,#c8336e 50%,#7a1d44 100%);border:1px solid #1a0a2e;bottom:5px;transition:bottom 0.2s cubic-bezier(.4,1.6,.5,1);display:flex;align-items:center;justify-content:center;font-size:5px;color:#fff;letter-spacing:1px;text-align:center;line-height:1.3}
+.p6-cart::before{content:"";position:absolute;top:3px;left:3px;right:3px;height:2px;background:#ffd93d}
+.p6[data-on="0"] .p6-cart{bottom:calc(100% - 12px);background:linear-gradient(180deg,#666 0%,#333 50%,#1a0a2e 100%);color:#888}
+.p6[data-on="0"] .p6-cart::before{background:#444}
+
+/* ========== P7: VACUUM TUBE ========== */
+.p7{width:34px;height:54px;cursor:pointer;position:relative}
+.p7-tube{position:absolute;inset:4px 2px 6px 2px;background:radial-gradient(ellipse at 50% 40%,#ffe5b4 0%,#ffae42 35%,#c84500 90%);border:2px solid #1a0a2e;border-radius:50% 50% 35% 35% / 35% 35% 50% 50%;box-shadow:0 0 14px rgba(255,140,0,0.7),inset 0 0 8px rgba(255,255,255,0.4)}
+.p7-fil{position:absolute;top:14px;left:50%;width:2px;height:18px;background:#ff4400;transform:translateX(-50%);box-shadow:0 0 6px #ff8800,0 0 12px #ff4400;animation:tubeFlicker 1.6s infinite}
+.p7-base{position:absolute;left:6px;right:6px;bottom:0;height:6px;background:linear-gradient(180deg,#888,#222);border:1px solid #1a0a2e}
+.p7[data-on="0"] .p7-tube{background:radial-gradient(ellipse at 50% 40%,#444 0%,#222 100%);box-shadow:none;animation:none}
+.p7[data-on="0"] .p7-fil{background:#222;box-shadow:none;animation:none}
+@keyframes tubeFlicker{0%,100%{opacity:1}50%{opacity:0.85}}
+
+/* ========== P8: POWER BUTTON ========== */
+.p8{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffe5b4 0%,#ffd93d 35%,#c89800 100%);border:3px solid #1a0a2e;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;color:#1a0a2e;box-shadow:0 0 14px rgba(255,217,61,0.7),inset 0 -4px 0 rgba(0,0,0,0.25);position:relative}
+.p8::before{content:"⏻";font-family:sans-serif}
+.p8[data-on="0"]{background:radial-gradient(circle at 30% 30%,#777 0%,#444 50%,#222 100%);color:#666;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.4)}
+
+.footer-note{font-size:7px;color:#888;text-align:center;letter-spacing:2px;margin-top:24px}
+.back-link{display:block;text-align:center;font-size:8px;color:#ff6b9d;margin:20px 0;text-decoration:none;letter-spacing:2px}
+</style>
+</head>
+<body>
+
+<h1>STEM SWITCH UI<br>SAMPLES</h1>
+<p class="intro">クリックでON/OFF切替<br>気に入った番号を番頭に教えてな〜</p>
+
+<a href="../smile-bomb/" class="back-link">▸ ゲームに戻る ◂</a>
+
+<!-- ============ P1: ROCKER ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P1</div>
+  <div class="pattern-name">ROCKER (現状)</div>
+  <div class="pattern-desc">既存のロッカースイッチ。上下に切り替わるシンプル設計。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p1" data-on="1"><div class="p1-half p1-top">ON</div><div class="p1-half p1-bottom"></div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p1" data-on="1"><div class="p1-half p1-top">ON</div><div class="p1-half p1-bottom"></div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p1" data-on="0"><div class="p1-half p1-top"></div><div class="p1-half p1-bottom">OFF</div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p1" data-on="1"><div class="p1-half p1-top">ON</div><div class="p1-half p1-bottom"></div></div></div>
+  </div>
+</div>
+
+<!-- ============ P2: TOGGLE LEVER ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P2</div>
+  <div class="pattern-name">TOGGLE LEVER</div>
+  <div class="pattern-desc">左右にカチッと倒すレバー式。ピンボール／ブレーカー風で物理感強め。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p2" data-on="1"><div class="p2-base"></div><div class="p2-lever"></div><div class="p2-pivot"></div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p2" data-on="1"><div class="p2-base"></div><div class="p2-lever"></div><div class="p2-pivot"></div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p2" data-on="0"><div class="p2-base"></div><div class="p2-lever"></div><div class="p2-pivot"></div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p2" data-on="1"><div class="p2-base"></div><div class="p2-lever"></div><div class="p2-pivot"></div></div></div>
+  </div>
+</div>
+
+<!-- ============ P3: ARCADE LED BUTTON ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P3</div>
+  <div class="pattern-name">ARCADE LED BUTTON</div>
+  <div class="pattern-desc">アーケード筐体の押し込みボタン。LED リングが光る。タップ感最強。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p3" data-on="1"></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p3" data-on="1"></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p3" data-on="0"></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p3" data-on="1"></div></div>
+  </div>
+</div>
+
+<!-- ============ P4: MIXER FADER ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P4</div>
+  <div class="pattern-name">MIXER FADER</div>
+  <div class="pattern-desc">DJミキサー風の縦フェーダー。上=ON、下=OFFでDJ感あふれる。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p4" data-on="1"><div class="p4-track"></div><div class="p4-handle"></div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p4" data-on="1"><div class="p4-track"></div><div class="p4-handle"></div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p4" data-on="0"><div class="p4-track"></div><div class="p4-handle"></div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p4" data-on="1"><div class="p4-track"></div><div class="p4-handle"></div></div></div>
+  </div>
+</div>
+
+<!-- ============ P5: ROTARY KNOB ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P5</div>
+  <div class="pattern-name">ROTARY KNOB</div>
+  <div class="pattern-desc">回転ノブ。インジケーターが上を向く=ON。シンセ機材っぽい。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p5" data-on="1"><div class="p5-indicator"></div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p5" data-on="1"><div class="p5-indicator"></div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p5" data-on="0"><div class="p5-indicator"></div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p5" data-on="1"><div class="p5-indicator"></div></div></div>
+  </div>
+</div>
+
+<!-- ============ P6: CARTRIDGE SLOT ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P6</div>
+  <div class="pattern-name">CARTRIDGE SLOT</div>
+  <div class="pattern-desc">ファミコン風カートリッジ挿入式。挿してON、引き抜いてOFF。レトロ最高潮。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p6" data-on="1"><div class="p6-cart">BEAT</div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p6" data-on="1"><div class="p6-cart">BASS</div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p6" data-on="0"><div class="p6-cart">SYNTH</div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p6" data-on="1"><div class="p6-cart">VOCAL</div></div></div>
+  </div>
+</div>
+
+<!-- ============ P7: VACUUM TUBE ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P7</div>
+  <div class="pattern-name">VACUUM TUBE</div>
+  <div class="pattern-desc">真空管。ONで橙色にじんわり光る。アナログ機材好きにグッとくる。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p7" data-on="1"><div class="p7-tube"></div><div class="p7-fil"></div><div class="p7-base"></div></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p7" data-on="1"><div class="p7-tube"></div><div class="p7-fil"></div><div class="p7-base"></div></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p7" data-on="0"><div class="p7-tube"></div><div class="p7-fil"></div><div class="p7-base"></div></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p7" data-on="1"><div class="p7-tube"></div><div class="p7-fil"></div><div class="p7-base"></div></div></div>
+  </div>
+</div>
+
+<!-- ============ P8: POWER BUTTON ============ -->
+<div class="pattern-panel">
+  <div class="pattern-num">P8</div>
+  <div class="pattern-name">POWER BUTTON</div>
+  <div class="pattern-desc">大型⏻パワーボタン。ONで黄色く光る。家電風で押しやすい。</div>
+  <div class="stems-row">
+    <div class="stem-cell"><div class="stem-label beat">BEAT</div><div class="p8" data-on="1"></div></div>
+    <div class="stem-cell"><div class="stem-label bass">BASS</div><div class="p8" data-on="1"></div></div>
+    <div class="stem-cell"><div class="stem-label synth">SYNTH</div><div class="p8" data-on="0"></div></div>
+    <div class="stem-cell"><div class="stem-label vocal">VOCAL</div><div class="p8" data-on="1"></div></div>
+  </div>
+</div>
+
+<a href="../smile-bomb/" class="back-link">▸ ゲームに戻る ◂</a>
+<div class="footer-note">v 0.12 sandbox</div>
+
+<script>
+// Generic toggle: tap any switch element to flip data-on
+['p1','p2','p3','p4','p5','p6','p7','p8'].forEach(cls => {
+  document.querySelectorAll('.' + cls).forEach(el => {
+    el.addEventListener('click', () => {
+      el.dataset.on = el.dataset.on === '1' ? '0' : '1';
+      // Sync rocker text
+      if(cls === 'p1'){
+        const top = el.querySelector('.p1-top');
+        const bot = el.querySelector('.p1-bottom');
+        if(el.dataset.on === '1'){ top.textContent = 'ON'; bot.textContent = ''; }
+        else { top.textContent = ''; bot.textContent = 'OFF'; }
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>

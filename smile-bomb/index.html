@@ -108,8 +108,9 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 .char-side.left .cheer-char{animation-delay:0s}
 .char-side.right .cheer-char{animation-delay:0.465s}
 @keyframes cheerBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.05)}}
-.cheer-bubble{position:absolute;bottom:42px;background:#fff;color:#1a0a2e;padding:5px 9px;font-size:7px;line-height:1.3;border:2px solid #1a0a2e;white-space:nowrap;z-index:11;opacity:0;pointer-events:none;box-shadow:2px 2px 0 #4a1a4e;letter-spacing:1px}
-.cheer-bubble::after{content:"";position:absolute;bottom:-8px;width:8px;height:8px;background:#fff;border-right:2px solid #1a0a2e;border-bottom:2px solid #1a0a2e;transform:rotate(45deg)}
+/* Speech bubble: butterfly-shooter style (white bg, 1px black border, stepped tail, pink monospace text) */
+.cheer-bubble{position:absolute;bottom:42px;background:#fff;color:#EC4899;padding:6px 10px;font-size:9px;line-height:1.3;border:1px solid #1C1917;white-space:nowrap;z-index:11;opacity:0;pointer-events:none;font-family:'Courier New',monospace;font-weight:bold;letter-spacing:0}
+.cheer-bubble::after{content:"";position:absolute;bottom:-4px;width:7px;height:7px;background:#fff;border-right:1px solid #1C1917;border-bottom:1px solid #1C1917;transform:rotate(45deg)}
 .char-side.left .cheer-bubble{left:0}
 .char-side.left .cheer-bubble::after{left:14px}
 .char-side.right .cheer-bubble{right:0}
@@ -137,7 +138,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.11</div>
+    <div class="title-version">v 0.12</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -173,6 +174,18 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   </div>
 </div>
 
+<!-- Cheer characters (kinako & bun) - moved here, between stage and stems, NOT in canvas -->
+<div class="cheer-zone">
+  <div class="char-side left">
+    <div class="cheer-bubble" id="cheerBubbleL"></div>
+    <img class="cheer-char" src="./assets/characters/kinako.png" alt="kinako">
+  </div>
+  <div class="char-side right">
+    <div class="cheer-bubble" id="cheerBubbleR"></div>
+    <img class="cheer-char" src="./assets/characters/bun.png" alt="bun">
+  </div>
+</div>
+
 <!-- Stems -->
 <div class="stems">
   <div class="stem beat"><div class="stem-label">BEAT</div><div class="rocker on" data-stem="beat"><div class="rocker-half rocker-top">ON</div><div class="rocker-half rocker-bottom"></div></div></div>
@@ -188,18 +201,6 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div class="key white w1" data-key="1">1</div>
   <div class="key white w2" data-key="3">3</div>
   <div class="key white w3" data-key="5">5</div>
-</div>
-
-<!-- Cheer characters (kinako & bun) with speech bubbles -->
-<div class="cheer-zone">
-  <div class="char-side left">
-    <div class="cheer-bubble" id="cheerBubbleL"></div>
-    <img class="cheer-char" src="./assets/characters/kinako.png" alt="kinako">
-  </div>
-  <div class="char-side right">
-    <div class="cheer-bubble" id="cheerBubbleR"></div>
-    <img class="cheer-char" src="./assets/characters/bun.png" alt="bun">
-  </div>
 </div>
 
 <script>
@@ -281,11 +282,93 @@ const CHEER_MESSAGES = [
   'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
 ];
 
-// Penguin (butterfly-shooter homage): occasional drifting enemy
+// Penguin (butterfly-shooter homage): pixel-sprite formation enemies
 let penguins = [];
 const PENGUIN_HIT_WORDS = ['いたい！','いてっ！','ぎゃー！','あーん！','ちょ！','ぐぇ！','やめて！','ムリ！'];
-const PENGUIN_RADIUS = 18;
-const PENGUIN_SPEED = 55;
+const PENGUIN_RADIUS = 20;
+const PENGUIN_SPEED = 65;
+const PENGUIN_SCALE = 2; // sprite is 20x23, scale 2 → 40x46 px on canvas
+const PENGUIN_SPACING = 28; // formation spacing
+const PENGUIN_SQUAD_SIZE = 5;
+
+// Pixel sprite definition (from butterfly-shooter)
+const PENGUIN_SPRITE = {
+  w: 20, h: 23,
+  palette: { 1:'#0F0F0F', 2:'#1F1F1F', 3:'#3A3A3A', 4:'#FFFFFF', 5:'#F97316', 6:'#C2410C' },
+  pixels: [
+    [0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+    [0,0,0,0,1,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0],
+    [0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0],
+    [0,0,0,1,2,4,4,2,2,2,2,4,4,2,2,1,0,0,0,0],
+    [0,0,0,1,2,4,1,2,2,2,2,1,4,2,2,1,0,0,0,0],
+    [0,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0],
+    [0,0,0,1,2,2,2,5,5,5,5,2,2,2,2,1,0,0,0,0],
+    [0,0,0,1,2,2,2,5,6,6,5,2,2,2,2,1,0,0,0,0],
+    [0,0,0,0,1,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0],
+    [0,0,0,0,1,1,2,2,2,2,2,2,1,1,0,0,0,0,0,0],
+    [0,0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0],
+    [0,0,1,2,2,2,4,4,4,4,4,4,2,2,2,1,0,0,0,0],
+    [0,1,2,2,2,4,4,4,4,4,4,4,4,2,2,2,1,0,0,0],
+    [1,2,2,2,4,4,4,4,4,4,4,4,4,4,2,2,2,1,0,0],
+    [1,2,2,2,4,4,4,4,4,4,4,4,4,4,2,2,2,1,0,0],
+    [1,2,2,4,4,4,4,4,4,4,4,4,4,4,4,2,2,1,0,0],
+    [1,2,2,4,4,4,4,4,4,4,4,4,4,4,4,2,2,1,0,0],
+    [0,1,2,2,4,4,4,4,4,4,4,4,4,4,2,2,1,0,0,0],
+    [0,1,2,2,2,4,4,4,4,4,4,4,4,2,2,2,1,0,0,0],
+    [0,0,1,2,2,2,2,4,4,4,4,2,2,2,2,1,0,0,0,0],
+    [0,0,0,1,1,2,2,2,2,2,2,2,2,1,1,0,0,0,0,0],
+    [0,0,0,0,5,5,5,1,0,0,0,1,5,5,5,0,0,0,0,0],
+    [0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0],
+  ]
+};
+
+// Speech bubble in butterfly-shooter pixel style (canvas drawing)
+function drawSpeechBubble(ctx, cx, cy, text, color){
+  ctx.font = "bold 9px 'Courier New', monospace";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const w = text.length * 9 + 8;
+  const h = 13;
+  const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
+  // White box
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x, y, w, h);
+  // Black 1px border (top, bottom, left, right)
+  ctx.fillStyle = '#1C1917';
+  ctx.fillRect(x, y, w, 1);
+  ctx.fillRect(x, y + h - 1, w, 1);
+  ctx.fillRect(x, y, 1, h);
+  ctx.fillRect(x + w - 1, y, 1, h);
+  // Tail (stepped pixel triangle)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(cx - 1, y + h, 3, 1);
+  ctx.fillRect(cx, y + h + 1, 1, 1);
+  ctx.fillStyle = '#1C1917';
+  ctx.fillRect(cx - 2, y + h, 1, 1);
+  ctx.fillRect(cx + 2, y + h, 1, 1);
+  ctx.fillRect(cx - 1, y + h + 1, 1, 1);
+  ctx.fillRect(cx + 1, y + h + 1, 1, 1);
+  // Text
+  ctx.fillStyle = color;
+  ctx.fillText(text, cx, y + h / 2);
+}
+
+function drawPixelSprite(ctx, def, cx, cy, scale, flipX){
+  const pal = def.palette, px = def.pixels;
+  const w = def.w, h = def.h;
+  const startX = Math.round(cx - (w * scale) / 2);
+  const startY = Math.round(cy - (h * scale) / 2);
+  for(let y = 0; y < h; y++){
+    const row = px[y];
+    for(let x = 0; x < w; x++){
+      const idx = row[x];
+      if(idx === 0) continue;
+      const drawX = flipX ? (startX + (w - 1 - x) * scale) : (startX + x * scale);
+      ctx.fillStyle = pal[idx];
+      ctx.fillRect(drawX, startY + y * scale, scale, scale);
+    }
+  }
+}
 
 // Damage effect (block touching bottom)
 let lastDamageTime = 0;
@@ -347,19 +430,24 @@ function makeBlock(x, y, type){
   return {x, y, targetY:y, w:0, h:BLOCK_HEIGHT, color:NORMAL_COLOR, type:'normal', hp:1, maxHp:1};
 }
 
-// Spawn a penguin from left or right edge of the stage
+// Spawn a squad of 5 penguins in formation (butterfly-shooter style)
 function spawnPenguin(){
-  const fromLeft = Math.random() < 0.5;
-  penguins.push({
-    x: fromLeft ? -24 : GAME_W + 24,
-    y: GAME_H * (0.45 + Math.random() * 0.15),
-    vx: fromLeft ? PENGUIN_SPEED : -PENGUIN_SPEED,
-    bobPhase: Math.random() * Math.PI * 2,
-    hp: 3, maxHp: 3,
-    flashUntil: 0,
-    hitMsg: null,
-    hitMsgUntil: 0
-  });
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const baseY = GAME_H * (0.45 + Math.random() * 0.15);
+  const leaderX = dir > 0 ? -PENGUIN_SPRITE.w * PENGUIN_SCALE / 2 - 4 : GAME_W + PENGUIN_SPRITE.w * PENGUIN_SCALE / 2 + 4;
+  for(let i = 0; i < PENGUIN_SQUAD_SIZE; i++){
+    penguins.push({
+      x: leaderX - dir * i * PENGUIN_SPACING,
+      baseY,
+      vx: dir * PENGUIN_SPEED,
+      bobPhase: i * 0.55,
+      hp: 3, maxHp: 3,
+      flashUntil: 0,
+      hitMsg: null,
+      hitMsgUntil: 0,
+      dir
+    });
+  }
 }
 
 // Show cheer message in alternating bubble
@@ -705,12 +793,13 @@ function update(dt){
   tickBPM();
   // --- ad rect (cached for this frame, valid only if active) ---
   const adRect = getAdRect();
-  // --- penguins (move + cull off-screen) ---
+  // --- penguins (move + bob + cull off-screen) ---
+  const pengHalfW = PENGUIN_SPRITE.w * PENGUIN_SCALE / 2;
   for(let i = penguins.length - 1; i >= 0; i--){
     const p = penguins[i];
     p.x += p.vx * dt;
-    p.bobPhase += dt * 4;
-    if((p.vx > 0 && p.x > GAME_W + 30) || (p.vx < 0 && p.x < -30)){
+    p.bobPhase += dt * 3;
+    if((p.vx > 0 && p.x > GAME_W + pengHalfW + 8) || (p.vx < 0 && p.x < -pengHalfW - 8)){
       penguins.splice(i, 1);
     }
   }
@@ -754,7 +843,7 @@ function update(dt){
       let pengHit = false;
       for(let pi = penguins.length - 1; pi >= 0; pi--){
         const peng = penguins[pi];
-        const py = peng.y + Math.sin(peng.bobPhase) * 4;
+        const py = peng.baseY + Math.sin(peng.bobPhase) * 6;
         const dx = b.x - peng.x, dy = b.y - py;
         if(dx*dx + dy*dy < (PENGUIN_RADIUS + BULLET_R) * (PENGUIN_RADIUS + BULLET_R)){
           peng.hp--;
@@ -902,32 +991,21 @@ function render(){
     }
   }
 
-  // Penguins (emoji-rendered with hit flash and speech bubbles)
+  // Penguins: pixel sprite with hit flash + butterfly-shooter-style speech bubble
   for(const peng of penguins){
-    const py = peng.y + Math.sin(peng.bobPhase) * 4;
+    const py = peng.baseY + Math.sin(peng.bobPhase) * 6;
     const isFlash = tnow < peng.flashUntil;
     if(isFlash){
+      // White rectangular flash behind sprite
+      const fw = PENGUIN_SPRITE.w * PENGUIN_SCALE + 4;
+      const fh = PENGUIN_SPRITE.h * PENGUIN_SCALE + 4;
       gctx.fillStyle = '#fff';
-      gctx.beginPath();
-      gctx.arc(peng.x, py, PENGUIN_RADIUS + 2, 0, Math.PI * 2);
-      gctx.fill();
+      gctx.fillRect(peng.x - fw/2, py - fh/2, fw, fh);
     }
-    gctx.font = '28px sans-serif';
-    gctx.textAlign = 'center';
-    gctx.textBaseline = 'middle';
-    gctx.fillText('🐧', peng.x, py);
-    // Hit message bubble
+    drawPixelSprite(gctx, PENGUIN_SPRITE, peng.x, py, PENGUIN_SCALE, peng.dir < 0);
+    // Hit message bubble (butterfly-shooter style: white box + black 1px border + tail)
     if(tnow < peng.hitMsgUntil && peng.hitMsg){
-      const w = peng.hitMsg.length * 9 + 14;
-      const bx = peng.x - w/2, by = py - 32;
-      gctx.fillStyle = '#fff';
-      gctx.fillRect(bx, by, w, 14);
-      gctx.strokeStyle = '#1a0a2e';
-      gctx.lineWidth = 1.5;
-      gctx.strokeRect(bx, by, w, 14);
-      gctx.fillStyle = '#EF4444';
-      gctx.font = 'bold 9px sans-serif';
-      gctx.fillText(peng.hitMsg, peng.x, by + 7);
+      drawSpeechBubble(gctx, peng.x, py - PENGUIN_SPRITE.h * PENGUIN_SCALE / 2 - 12, peng.hitMsg, '#EF4444');
     }
   }
   // Bullets (glowing square, color cycles through tropical hues じんわり)
