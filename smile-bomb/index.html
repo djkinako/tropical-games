@@ -146,7 +146,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.14</div>
+    <div class="title-version">v 0.15</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -298,9 +298,13 @@ const CHEER_MESSAGES = [
 // Boss battle (3:30 mark)
 const BOSS_TRIGGER_TIME_S = 210;
 const BOSS_HP = 200;
-const BOSS_RADIUS = 42;
-const BOSS_EMOJI = '👹';
+const BOSS_DAMAGE_FLASH_MS = 300;
+const BOSS_DAMAGE_INTERVAL = 20; // every 20 hits show damage image
+const BOSS_DEFEAT_DELAY_MS = 3000;
+const BOSS_WIDTH_PCT = 0.40; // 40% of canvas width
 const FIREWORK_TOTAL = 30;
+const BOSS_IMAGE_NAMES = ['normal','normal_dmg','angry','angry_dmg','defeated'];
+const BOSS_IMAGES = {};
 let boss = null;
 let bossTriggered = false;
 let bossBattleActive = false;
@@ -489,11 +493,17 @@ function triggerBossBattle(){
     $('bossWarning').classList.add('hidden');
     boss = {
       x: GAME_W / 2,
-      y: 70,
+      y: GAME_H * 0.25,
       hp: BOSS_HP,
       maxHp: BOSS_HP,
-      phase: 0,
-      flashUntil: 0
+      phase: 1,         // 1..4 (HP-based)
+      isAngry: false,
+      hitCount: 0,
+      damageFlashUntil: 0,
+      motionPhase: 0,
+      scale: 1.0,
+      defeated: false,
+      defeatedAt: 0
     };
     bossBattleActive = true;
   }, 2400);
@@ -502,28 +512,65 @@ function triggerBossBattle(){
 function defeatBoss(){
   if(!boss) return;
   bossBattleActive = false;
-  // Big explosion at boss position (multiple layers)
-  for(let i = 0; i < 4; i++){
-    spawnExplosion(boss.x + (Math.random() - 0.5) * 30, boss.y + (Math.random() - 0.5) * 30);
-  }
-  document.body.classList.remove('shake');
-  void document.body.offsetWidth;
-  document.body.classList.add('shake');
-  setTimeout(() => document.body.classList.remove('shake'), 600);
-  score += 5000;
-  $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
-  // Start fireworks
-  startFireworks();
-  // Boss disappears after a beat
-  setTimeout(() => { boss = null; }, 400);
+  boss.defeated = true;
+  boss.defeatedAt = performance.now();
+  // 3-second delay: boss shows defeated image (with shake) then explosion + fireworks
+  setTimeout(() => {
+    if(!boss) return;
+    // Big explosions at boss position
+    for(let i = 0; i < 4; i++){
+      spawnExplosion(boss.x + (Math.random() - 0.5) * 30, boss.y + (Math.random() - 0.5) * 30);
+    }
+    document.body.classList.remove('shake');
+    void document.body.offsetWidth;
+    document.body.classList.add('shake');
+    setTimeout(() => document.body.classList.remove('shake'), 600);
+    score += 5000;
+    $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+    startFireworks();
+    boss = null; // remove after explosion
+  }, BOSS_DEFEAT_DELAY_MS);
 }
 
 function updateBoss(dt){
-  if(!boss || !bossBattleActive) return;
-  boss.phase += dt;
-  // Shooting-game style: figure-8 / sine motion
-  boss.x = GAME_W / 2 + Math.sin(boss.phase * 0.9) * (GAME_W / 2 - BOSS_RADIUS - 8);
-  boss.y = 70 + Math.sin(boss.phase * 1.4) * 22;
+  if(!boss) return;
+  if(boss.defeated) return;          // no movement when defeated (just shake in render)
+  if(!bossBattleActive) return;
+  boss.motionPhase += dt;
+  const t = boss.motionPhase;
+  const cx = GAME_W / 2;
+  const baseY = GAME_H * 0.27;
+  const hpPct = boss.hp / boss.maxHp;
+  // Determine phase from HP
+  let phase;
+  if(hpPct > 0.75) phase = 1;
+  else if(hpPct > 0.50) phase = 2;
+  else if(hpPct > 0.25) phase = 3;
+  else phase = 4;
+  boss.phase = phase;
+  boss.isAngry = (phase === 4);
+  // Movement per phase
+  if(phase === 1){
+    // Gentle horizontal swing
+    boss.x = cx + Math.sin(t * 0.6) * (GAME_W * 0.30);
+    boss.y = baseY + Math.sin(t * 0.4) * 8;
+    boss.scale = 1.0;
+  } else if(phase === 2){
+    // Figure-8 ish, faster
+    boss.x = cx + Math.sin(t * 0.95) * (GAME_W * 0.35);
+    boss.y = baseY + Math.sin(t * 1.9) * 18;
+    boss.scale = 1.0;
+  } else if(phase === 3){
+    // Same + breathing scale
+    boss.x = cx + Math.sin(t * 1.15) * (GAME_W * 0.38);
+    boss.y = baseY + Math.cos(t * 1.5) * 22;
+    boss.scale = 1.0 + Math.sin(t * 3.0) * 0.06; // 0.94..1.06
+  } else {
+    // Phase 4: rage, fast erratic
+    boss.x = cx + Math.sin(t * 1.7) * (GAME_W * 0.42) + Math.sin(t * 7) * 8;
+    boss.y = baseY + Math.cos(t * 2.5) * 30 + Math.cos(t * 6) * 6;
+    boss.scale = 1.05 + Math.sin(t * 4.5) * 0.08;
+  }
 }
 
 function startFireworks(){
@@ -661,11 +708,11 @@ function onKick(){
   totalBars++;
   // Cheer message every 8 bars
   if(totalBars % 8 === 0) showCheerMessage();
-  // Penguin squad every 8 bars (offset 4) AFTER song hits 90s mark
+  // Penguin squad every 8 bars (offset 4) AFTER song hits 90s mark, BUT not after boss triggered
   const songTime = ctx ? Math.max(0, ctx.currentTime - playStartTime) : 0;
-  if(totalBars % 8 === 4 && songTime >= 90) spawnPenguin();
-  // Skip block descent during boss battle and post-boss fireworks
-  if(bossBattleActive || postBossFireworks) return;
+  if(totalBars % 8 === 4 && songTime >= 90 && !bossTriggered) spawnPenguin();
+  // After boss triggered, no more block spawning forever (fireworks → end)
+  if(bossTriggered) return;
   const totalGapW = BLOCK_GAP * (BLOCK_COLS + 1);
   const blockW = (GAME_W - totalGapW) / BLOCK_COLS;
   const shift = BLOCK_HEIGHT + BLOCK_GAP;
@@ -1013,21 +1060,35 @@ function update(dt){
     }
     // boss collision (damage boss, reflect bullet)
     if(boss && bossBattleActive){
+      // Compute boss collision radius from current scaled width
+      const bossImg = BOSS_IMAGES[boss.isAngry ? 'angry' : 'normal'];
+      const bossW = GAME_W * BOSS_WIDTH_PCT * boss.scale;
+      const bossH = bossImg ? bossW * (bossImg.height / bossImg.width) : bossW;
+      // Use ellipse-ish AABB: check if bullet is inside boss bounding box
+      const halfW = bossW / 2, halfH = bossH / 2;
       const bdx = b.x - boss.x;
       const bdy = b.y - boss.y;
-      if(bdx*bdx + bdy*bdy < (BOSS_RADIUS + BULLET_R) * (BOSS_RADIUS + BULLET_R)){
+      // Normalized squared distance for ellipse hit test
+      const ndx = bdx / halfW, ndy = bdy / halfH;
+      if(ndx*ndx + ndy*ndy < 1){
         boss.hp = Math.max(0, boss.hp - 1);
-        boss.flashUntil = now + 60;
+        boss.hitCount++;
+        // Damage image flash every 20 hits
+        if(boss.hitCount % BOSS_DAMAGE_INTERVAL === 0){
+          boss.damageFlashUntil = now + BOSS_DAMAGE_FLASH_MS;
+        }
         spawnHitParticles(b.x, b.y, '#ff6b9d');
         score += 10;
         $('scoreDisplay').textContent = 'SCORE ' + String(score).padStart(5,'0');
+        // Reflect bullet (using normalized coords for ellipse normal direction)
         const len = Math.sqrt(bdx*bdx + bdy*bdy) || 1;
         const nx = bdx / len, ny = bdy / len;
         const dot = b.vx * nx + b.vy * ny;
         b.vx = b.vx - 2 * dot * nx;
         b.vy = b.vy - 2 * dot * ny;
-        b.x = boss.x + nx * (BOSS_RADIUS + BULLET_R + 1);
-        b.y = boss.y + ny * (BOSS_RADIUS + BULLET_R + 1);
+        // Push bullet outside ellipse
+        b.x = boss.x + nx * (Math.max(halfW, halfH) + BULLET_R + 1);
+        b.y = boss.y + ny * (Math.max(halfW, halfH) + BULLET_R + 1);
         if(boss.hp <= 0){
           defeatBoss();
         }
@@ -1187,36 +1248,52 @@ function render(){
     }
   }
 
-  // Boss: giant emoji + HP bar
-  if(boss && bossBattleActive){
-    const isFlash = tnow < boss.flashUntil;
-    if(isFlash){
-      gctx.fillStyle = '#fff';
-      gctx.beginPath();
-      gctx.arc(boss.x, boss.y, BOSS_RADIUS + 6, 0, Math.PI * 2);
-      gctx.fill();
+  // Boss: image-based with phase/damage/defeated states + HP bar
+  if(boss){
+    // Pick image based on state
+    let imgKey;
+    const showDmg = (tnow < boss.damageFlashUntil);
+    if(boss.defeated) imgKey = 'defeated';
+    else if(boss.isAngry) imgKey = showDmg ? 'angry_dmg' : 'angry';
+    else imgKey = showDmg ? 'normal_dmg' : 'normal';
+    const img = BOSS_IMAGES[imgKey];
+    if(img){
+      const targetW = GAME_W * BOSS_WIDTH_PCT * (boss.defeated ? 1.0 : boss.scale);
+      const aspect = img.height / img.width;
+      const w = targetW;
+      const h = targetW * aspect;
+      // Defeated shake offset
+      let dx = 0, dy = 0;
+      if(boss.defeated){
+        const since = tnow - boss.defeatedAt;
+        if(since < BOSS_DEFEAT_DELAY_MS){
+          dx = (Math.random() - 0.5) * 6;
+          dy = (Math.random() - 0.5) * 6;
+        }
+      }
+      gctx.imageSmoothingEnabled = false;
+      gctx.drawImage(img, boss.x - w/2 + dx, boss.y - h/2 + dy, w, h);
+      gctx.imageSmoothingEnabled = true;
     }
-    gctx.font = '92px sans-serif';
-    gctx.textAlign = 'center';
-    gctx.textBaseline = 'middle';
-    gctx.fillText(BOSS_EMOJI, boss.x, boss.y);
-    // HP bar at top
-    const barW = GAME_W * 0.7;
-    const barH = 9;
-    const barX = (GAME_W - barW) / 2;
-    const barY = 6;
-    gctx.fillStyle = '#1a0a2e';
-    gctx.fillRect(barX, barY, barW, barH);
-    gctx.strokeStyle = '#fff';
-    gctx.lineWidth = 1;
-    gctx.strokeRect(barX, barY, barW, barH);
-    const pct = boss.hp / boss.maxHp;
-    gctx.fillStyle = pct > 0.5 ? '#5DCAA5' : (pct > 0.25 ? '#ffd93d' : '#ff3060');
-    gctx.fillRect(barX + 1, barY + 1, (barW - 2) * pct, barH - 2);
-    gctx.fillStyle = '#fff';
-    gctx.font = 'bold 8px monospace';
-    gctx.textAlign = 'left';
-    gctx.fillText('BOSS HP ' + boss.hp, barX, barY + barH + 8);
+    // HP bar (only when alive and active)
+    if(!boss.defeated){
+      const barW = GAME_W * 0.7;
+      const barH = 9;
+      const barX = (GAME_W - barW) / 2;
+      const barY = 6;
+      gctx.fillStyle = '#1a0a2e';
+      gctx.fillRect(barX, barY, barW, barH);
+      gctx.strokeStyle = '#fff';
+      gctx.lineWidth = 1;
+      gctx.strokeRect(barX, barY, barW, barH);
+      const pct = boss.hp / boss.maxHp;
+      gctx.fillStyle = pct > 0.5 ? '#5DCAA5' : (pct > 0.25 ? '#ffd93d' : '#ff3060');
+      gctx.fillRect(barX + 1, barY + 1, (barW - 2) * pct, barH - 2);
+      gctx.fillStyle = '#fff';
+      gctx.font = 'bold 8px monospace';
+      gctx.textAlign = 'left';
+      gctx.fillText('BOSS HP ' + boss.hp + ' / ' + boss.maxHp, barX, barY + barH + 8);
+    }
   }
   // Penguins: pixel sprite with hit flash + butterfly-shooter-style speech bubble
   for(const peng of penguins){
@@ -1305,10 +1382,23 @@ async function loadAudio(url){
   return await ctx.decodeAudioData(arr);
 }
 
+function loadImage(url){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 async function loadAll(){
   const tasks = [];
   STEMS.forEach(s => tasks.push(loadAudio('./audio/stems/'+s+'.mp3').then(b => stemBuffers[s] = b)));
   KEYS.forEach(k => tasks.push(loadAudio('./audio/keys/'+k+'.mp3').then(b => keyBuffers[k] = b)));
+  // Boss images preload
+  BOSS_IMAGE_NAMES.forEach(name => {
+    tasks.push(loadImage('./assets/boss/'+name+'.png').then(img => { if(img) BOSS_IMAGES[name] = img; }));
+  });
   let done = 0;
   const total = tasks.length;
   tasks.forEach(p => p.then(() => {
