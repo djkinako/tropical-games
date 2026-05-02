@@ -146,7 +146,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.16</div>
+    <div class="title-version">v 0.17</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -295,19 +295,21 @@ const CHEER_MESSAGES = [
   'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
 ];
 
-// Boss battle (3:20 mark)
-const BOSS_TRIGGER_TIME_S = 200;
-const BOSS_HP = 240;
+// Boss battle: warning at 3:20, actual spawn at 3:30 (10s alert)
+const BOSS_WARNING_TIME_S = 200;        // 3:20
+const BOSS_SPAWN_DELAY_MS = 10000;       // 10s between warning and actual spawn
+const BOSS_HP = 300;
 const BOSS_DAMAGE_FLASH_MS = 300;
-const BOSS_DAMAGE_INTERVAL = 20; // every 20 hits show damage image
+const BOSS_DAMAGE_INTERVAL = 20;
 const BOSS_DEFEAT_DELAY_MS = 3000;
 // Width per phase: gradually grows 40% → 55%
 const BOSS_WIDTH_PCT_BY_PHASE = [0.40, 0.45, 0.50, 0.55];
-const FIREWORK_LAUNCH_INTERVAL_MS = 200; // continuous launches
+const FIREWORK_LAUNCH_INTERVAL_MS = 200;
 const BOSS_IMAGE_NAMES = ['normal','normal_dmg','angry','angry_dmg','defeated'];
 const BOSS_IMAGES = {};
 let boss = null;
-let bossTriggered = false;
+let bossWarningShown = false;
+let bossTriggered = false;       // true after actual spawn (kicks stop)
 let bossBattleActive = false;
 let postBossFireworks = false;
 let fireworkQueue = [];
@@ -464,9 +466,22 @@ function makeBlock(x, y, type){
 // =========================================================
 // BOSS BATTLE
 // =========================================================
-function triggerBossBattle(){
+// Step 1: Show WARNING overlay (blocks continue normal play during this 10s)
+function triggerBossWarning(){
+  bossWarningShown = true;
+  $('bossWarning').classList.remove('hidden');
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 320);
+  setTimeout(() => bossSpawn(), BOSS_SPAWN_DELAY_MS);
+}
+
+// Step 2: Boss actually appears - scatter all current blocks, spawn boss, freeze kicks
+function bossSpawn(){
   bossTriggered = true;
-  // Scatter all blocks as colorful particles
+  $('bossWarning').classList.add('hidden');
+  // Scatter all current blocks as colorful particles
   for(const blk of blocks){
     for(let i = 0; i < 8; i++){
       const angle = Math.random() * Math.PI * 2;
@@ -485,29 +500,26 @@ function triggerBossBattle(){
     }
   }
   blocks = [];
-  // Show WARNING overlay
-  $('bossWarning').classList.remove('hidden');
+  // Spawn boss
+  boss = {
+    x: GAME_W / 2,
+    y: GAME_H * 0.27,
+    hp: BOSS_HP,
+    maxHp: BOSS_HP,
+    phase: 1,
+    isAngry: false,
+    hitCount: 0,
+    damageFlashUntil: 0,
+    motionPhase: 0,
+    scale: 1.0,
+    defeated: false,
+    defeatedAt: 0
+  };
+  bossBattleActive = true;
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
   document.body.classList.add('shake');
   setTimeout(() => document.body.classList.remove('shake'), 320);
-  // Spawn boss after warning
-  setTimeout(() => {
-    $('bossWarning').classList.add('hidden');
-    boss = {
-      x: GAME_W / 2,
-      y: GAME_H * 0.25,
-      hp: BOSS_HP,
-      maxHp: BOSS_HP,
-      phase: 1,         // 1..4 (HP-based)
-      isAngry: false,
-      hitCount: 0,
-      damageFlashUntil: 0,
-      motionPhase: 0,
-      scale: 1.0,
-      defeated: false,
-      defeatedAt: 0
-    };
-    bossBattleActive = true;
-  }, 2400);
 }
 
 function defeatBoss(){
@@ -1064,11 +1076,11 @@ function update(dt){
     }
     // boss collision (damage boss, reflect bullet)
     if(boss && bossBattleActive){
-      // Compute boss collision size from phase-based width
-      const bossImg = BOSS_IMAGES[boss.isAngry ? 'angry' : 'normal'];
+      // Use reference image aspect (matches render) for stable collision
+      const refImg = boss.isAngry ? (BOSS_IMAGES.angry || BOSS_IMAGES.normal) : BOSS_IMAGES.normal;
       const widthPct = BOSS_WIDTH_PCT_BY_PHASE[boss.phase - 1] || 0.40;
       const bossW = GAME_W * widthPct * boss.scale;
-      const bossH = bossImg ? bossW * (bossImg.height / bossImg.width) : bossW;
+      const bossH = refImg ? bossW * (refImg.height / refImg.width) : bossW;
       // Use ellipse-ish AABB: check if bullet is inside boss bounding box
       const halfW = bossW / 2, halfH = bossH / 2;
       const bdx = b.x - boss.x;
@@ -1265,10 +1277,15 @@ function render(){
     if(img){
       const widthPct = BOSS_WIDTH_PCT_BY_PHASE[boss.phase - 1] || 0.40;
       const targetW = GAME_W * widthPct * (boss.defeated ? 1.0 : boss.scale);
-      const aspect = img.height / img.width;
+      // Use REFERENCE image aspect ratio so swapping normal↔normal_dmg doesn't shift position.
+      // Reference: angry phase uses angry image, otherwise normal image. Defeated uses defeated image.
+      let refImg;
+      if(boss.defeated) refImg = BOSS_IMAGES.defeated || BOSS_IMAGES.angry || BOSS_IMAGES.normal;
+      else if(boss.isAngry) refImg = BOSS_IMAGES.angry || BOSS_IMAGES.normal;
+      else refImg = BOSS_IMAGES.normal;
+      const aspect = refImg ? (refImg.height / refImg.width) : 1.2;
       const w = targetW;
       const h = targetW * aspect;
-      // Defeated shake offset
       let dx = 0, dy = 0;
       if(boss.defeated){
         const since = tnow - boss.defeatedAt;
@@ -1278,6 +1295,7 @@ function render(){
         }
       }
       gctx.imageSmoothingEnabled = false;
+      // Force image to render at fixed size regardless of its native aspect, preventing position warp
       gctx.drawImage(img, boss.x - w/2 + dx, boss.y - h/2 + dy, w, h);
       gctx.imageSmoothingEnabled = true;
     }
@@ -1369,9 +1387,9 @@ function gameLoop(now){
     adShown = true;
     showAd();
   }
-  // Trigger boss battle at 3:30 once
-  if(!bossTriggered && cur >= BOSS_TRIGGER_TIME_S){
-    triggerBossBattle();
+  // Trigger boss WARNING at 3:20 (boss actually spawns 10s later via bossSpawn())
+  if(!bossWarningShown && cur >= BOSS_WARNING_TIME_S){
+    triggerBossWarning();
   }
   // Tick fireworks (post-boss celebration)
   tickFireworks(now);
@@ -1467,6 +1485,7 @@ function startGame(){
   adShown = false;
   // Boss state reset
   boss = null;
+  bossWarningShown = false;
   bossTriggered = false;
   bossBattleActive = false;
   postBossFireworks = false;
