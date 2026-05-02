@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Background Samples (BPM 129)</title>
+<title>Background Samples v2 (BPM 129)</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -17,149 +17,206 @@ h1{font-size:14px;color:#ffd93d;text-shadow:2px 2px 0 #ff6b9d;letter-spacing:2px
 .panel-name{font-size:10px;color:#ff6b9d;letter-spacing:1px;margin-bottom:8px}
 .panel-desc{font-size:7px;color:#c8b6ff;line-height:1.7;margin-top:10px;letter-spacing:1px}
 .demo-stage{height:220px;border:2px solid #4a1a4e;overflow:hidden;position:relative;background:#1a0a2e}
+.toggle-row{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.toggle-btn{padding:6px 8px;font-family:inherit;font-size:7px;letter-spacing:1px;border:2px solid currentColor;background:transparent;cursor:pointer;color:#888}
+.toggle-btn.on{background:currentColor}
+.toggle-btn.on span{color:#1a0a2e}
+.toggle-btn.beat{color:#ff6b9d}
+.toggle-btn.bass{color:#c8b6ff}
+.toggle-btn.synth{color:#5DCAA5}
+.toggle-btn.vocal{color:#ffd93d}
+.toggle-btn span{font-weight:bold}
 
 /* ============================================== */
-/* #4 SYNTHWAVE GRID                              */
+/* #4-EX SYNTHWAVE GRID + 4 STEM LIGHT BEAMS      */
 /* ============================================== */
-.synthwave{position:absolute;inset:0;background:linear-gradient(180deg,#1a0a2e 0%,#4a1a4e 30%,#7a1d44 55%,#c8336e 70%,#ff6b9d 80%,#ffd93d 92%,#ffe9a8 100%);overflow:hidden}
+.synthwave{position:absolute;inset:0;background:linear-gradient(180deg,#1a0a2e 0%,#4a1a4e 28%,#7a1d44 50%,#c8336e 65%,#ff6b9d 76%,#ffd93d 90%,#ffe9a8 100%);overflow:hidden}
 .sw-sun{position:absolute;left:50%;bottom:48%;transform:translate(-50%,50%);width:64%;aspect-ratio:2/1;background:radial-gradient(ellipse at 50% 100%,#ffd93d 0%,#ff6b9d 60%,transparent 100%);animation:sunPulse 0.465s ease-in-out infinite;filter:blur(2px)}
 .sw-sun::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,0.4) 4px 6px);mask-image:linear-gradient(0deg,#000 30%,transparent 100%);-webkit-mask-image:linear-gradient(0deg,#000 30%,transparent 100%)}
-.sw-grid{position:absolute;left:0;right:0;bottom:0;height:55%;perspective:160px;perspective-origin:50% 0}
+.sw-grid{position:absolute;left:0;right:0;bottom:0;height:55%;perspective:160px;perspective-origin:50% 0;z-index:1}
 .sw-grid-floor{position:absolute;inset:0;background:
   linear-gradient(180deg,transparent 0%,#1a0a2e 90%),
   repeating-linear-gradient(90deg,transparent 0 calc(100%/16),#ff6b9d calc(100%/16) calc(100%/16 + 1px)),
   repeating-linear-gradient(0deg,transparent 0 18px,#ff6b9d 18px 19px);
   transform-origin:top center;transform:rotateX(60deg) translateZ(0);animation:gridFlow 1.86s linear infinite}
-.sw-horizon{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent,#ffd93d 50%,transparent);box-shadow:0 0 12px #ffd93d}
+.sw-horizon{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent,#ffd93d 50%,transparent);box-shadow:0 0 12px #ffd93d;z-index:2}
 @keyframes sunPulse{0%,100%{transform:translate(-50%,50%) scale(1)}50%{transform:translate(-50%,50%) scale(1.05)}}
 @keyframes gridFlow{from{background-position:0 0,0 0,0 0}to{background-position:0 0,0 0,0 19px}}
 
-/* ============================================== */
-/* #7 GIANT SPEAKER CONE                          */
-/* ============================================== */
-.speaker{position:absolute;inset:0;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 90%);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.sp-rim{position:relative;width:74%;aspect-ratio:1;max-width:160px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#666 0%,#222 70%,#000 100%);box-shadow:0 0 0 4px #1a0a2e,0 8px 24px rgba(0,0,0,0.6)}
-.sp-cone{position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle at center,#4a1a4e 0%,#2d1640 50%,#1a0a2e 90%);box-shadow:inset 0 0 30px rgba(0,0,0,0.7),inset 0 6px 12px rgba(255,255,255,0.06);animation:conePulse 0.465s ease-in-out infinite}
-.sp-center{position:absolute;top:50%;left:50%;width:36%;height:36%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffaacc 0%,#ff6b9d 50%,#c8336e 100%);border:2px solid #1a0a2e;box-shadow:0 0 12px rgba(255,107,157,0.6),inset 0 -4px 8px rgba(0,0,0,0.4);animation:centerPulse 0.465s ease-in-out infinite}
-.sp-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:2px solid rgba(255,107,157,0.5);transform:translate(-50%,-50%);animation:ringExpand 1.86s ease-out infinite}
-.sp-ring.r1{width:80%;height:80%;animation-delay:0s}
-.sp-ring.r2{width:80%;height:80%;animation-delay:0.62s}
-.sp-ring.r3{width:80%;height:80%;animation-delay:1.24s}
-@keyframes conePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-@keyframes centerPulse{0%,100%{transform:translate(-50%,-50%) scale(1);box-shadow:0 0 12px rgba(255,107,157,0.6),inset 0 -4px 8px rgba(0,0,0,0.4)}50%{transform:translate(-50%,-50%) scale(1.12);box-shadow:0 0 24px rgba(255,217,61,0.9),inset 0 -4px 8px rgba(0,0,0,0.4)}}
-@keyframes ringExpand{0%{transform:translate(-50%,-50%) scale(0.6);opacity:0.9;border-color:rgba(255,107,157,0.7)}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0;border-color:rgba(255,217,61,0)}}
+/* 4 stem light beams overlay - rises from bottom, blur-glow */
+.beams{position:absolute;inset:0;z-index:3;pointer-events:none}
+.beam{position:absolute;bottom:0;width:14%;height:100%;filter:blur(10px);transition:opacity 0.25s ease-out;mix-blend-mode:screen}
+.beam.on{opacity:0.85;animation:beamPulse 0.465s ease-in-out infinite}
+.beam.off{opacity:0.05}
+.beam.b1{left:8%;background:linear-gradient(0deg,#ff6b9d 0%,#ff6b9d 25%,transparent 90%)}
+.beam.b2{left:30%;background:linear-gradient(0deg,#c8b6ff 0%,#c8b6ff 25%,transparent 90%)}
+.beam.b3{left:54%;background:linear-gradient(0deg,#5DCAA5 0%,#5DCAA5 25%,transparent 90%)}
+.beam.b4{left:76%;background:linear-gradient(0deg,#ffd93d 0%,#ffd93d 25%,transparent 90%)}
+.beam-core{position:absolute;bottom:0;left:0;width:100%;height:100%;filter:blur(2px);opacity:0.9}
+.beam.b1 .beam-core{background:linear-gradient(0deg,#ff6b9d 0%,#ff6b9d 15%,transparent 70%)}
+.beam.b2 .beam-core{background:linear-gradient(0deg,#c8b6ff 0%,#c8b6ff 15%,transparent 70%)}
+.beam.b3 .beam-core{background:linear-gradient(0deg,#5DCAA5 0%,#5DCAA5 15%,transparent 70%)}
+.beam.b4 .beam-core{background:linear-gradient(0deg,#ffd93d 0%,#ffd93d 15%,transparent 70%)}
+@keyframes beamPulse{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.08) scaleX(1.15)}}
 
 /* ============================================== */
-/* #5 PIANO ROLL VERTICAL STREAM                  */
+/* #7A REGGAE SOUND SYSTEM STACK (vertical tower) */
 /* ============================================== */
-.piano-roll{position:absolute;inset:0;background:linear-gradient(180deg,#1a0a2e 0%,#2d1640 100%);display:flex;overflow:hidden}
-.pr-lane{flex:1;position:relative;border-right:1px dashed rgba(255,255,255,0.06)}
-.pr-lane:last-child{border-right:none}
-.pr-lane-label{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-size:6px;letter-spacing:2px;color:rgba(255,255,255,0.5);z-index:2;pointer-events:none}
-.pr-lane.beat .pr-lane-label{color:#ff6b9d}
-.pr-lane.bass .pr-lane-label{color:#c8b6ff}
-.pr-lane.synth .pr-lane-label{color:#5DCAA5}
-.pr-lane.vocal .pr-lane-label{color:#ffd93d}
-.pr-note{position:absolute;left:18%;right:18%;height:10px;border-radius:1px;animation:noteFall 2.4s linear forwards;box-shadow:0 0 8px currentColor;will-change:transform,opacity}
-.pr-lane.beat .pr-note{background:#ff6b9d;color:#ff6b9d}
-.pr-lane.bass .pr-note{background:#c8b6ff;color:#c8b6ff}
-.pr-lane.synth .pr-note{background:#5DCAA5;color:#5DCAA5}
-.pr-lane.vocal .pr-note{background:#ffd93d;color:#ffd93d}
-@keyframes noteFall{from{top:-12px;opacity:1}80%{opacity:1}to{top:108%;opacity:0.6}}
-/* Beat-line at bottom (judgment line) */
-.pr-judgment{position:absolute;left:0;right:0;bottom:8px;height:2px;background:linear-gradient(90deg,#ff6b9d,#c8b6ff,#5DCAA5,#ffd93d);box-shadow:0 0 8px rgba(255,255,255,0.5);z-index:3}
-.pr-grid-h{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,0.04);animation:gridLineFall 1.86s linear infinite}
-.pr-grid-h.g1{top:-100%;animation-delay:0s}
-.pr-grid-h.g2{top:-100%;animation-delay:0.62s}
-.pr-grid-h.g3{top:-100%;animation-delay:1.24s}
-@keyframes gridLineFall{from{top:-2px}to{top:100%}}
+.reggae-stack{position:absolute;inset:0;background:linear-gradient(180deg,#0d0518 0%,#1a0a2e 60%,#2d1640 100%);display:flex;justify-content:center;align-items:center;overflow:hidden}
+.stack-cabinet{position:relative;width:46%;height:90%;background:#5a3815;border:4px solid #1a0a05;box-shadow:inset 0 -6px 0 #3d2510,inset 0 6px 0 #7a4f25,4px 4px 0 #000;animation:cabinetPulse 0.465s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;justify-content:space-around;padding:10px 0}
+.stack-cabinet::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,0.15) 4px 5px,transparent 5px 10px);pointer-events:none}
+.stack-title{position:relative;background:#ffd93d;color:#1a0a05;font-size:8px;padding:2px 10px;border:2px solid #1a0a05;font-weight:bold;letter-spacing:2px}
+.stack-cone{position:relative;width:62%;aspect-ratio:1;border-radius:50%;background:#1a0a2e;border:3px solid #0a0510;box-shadow:inset 0 0 0 4px #2d1640,inset 0 0 0 6px #1a0a2e,inset 0 0 0 14px #3a1f55,inset 0 0 0 18px #1a0a2e}
+.stack-cone.large{width:62%}
+.stack-cone.medium{width:48%}
+.stack-cone-cap{position:absolute;top:50%;left:50%;width:30%;height:30%;transform:translate(-50%,-50%);border-radius:50%;background:#ff6b9d;border:2px solid #1a0a05;animation:capPulse 0.465s ease-in-out infinite}
+@keyframes cabinetPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+@keyframes capPulse{0%,100%{transform:translate(-50%,-50%) scale(1);background:#ff6b9d}50%{transform:translate(-50%,-50%) scale(1.15);background:#ffd93d}}
+
+/* ============================================== */
+/* #7B TWIN WALL SPEAKERS                         */
+/* ============================================== */
+.twin-wall{position:absolute;inset:0;background:linear-gradient(180deg,#0d0518 0%,#1a0a2e 100%);display:flex;justify-content:center;align-items:center;gap:6%;padding:0 8%;overflow:hidden}
+.twin-cabinet{position:relative;flex:1;height:78%;background:#3a2615;border:4px solid #1a0a05;box-shadow:inset 0 -4px 0 #2a1810,inset 0 4px 0 #5a3920,3px 3px 0 #000;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:twinPulse 0.465s ease-in-out infinite}
+.twin-cabinet::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,0.18) 3px 4px);pointer-events:none}
+.twin-cabinet.left{animation-delay:0s}
+.twin-cabinet.right{animation-delay:0.232s}
+.twin-cone{position:relative;width:78%;aspect-ratio:1;border-radius:50%;background:#1a0a2e;border:4px solid #0a0510;box-shadow:inset 0 0 0 6px #2d1640,inset 0 0 0 8px #1a0a05,inset 0 0 0 18px #3a1f55,inset 0 0 0 22px #1a0a05}
+.twin-cap{position:absolute;top:50%;left:50%;width:32%;height:32%;transform:translate(-50%,-50%);border-radius:50%;background:#5DCAA5;border:3px solid #1a0a05;animation:twinCapPulse 0.465s ease-in-out infinite}
+.twin-cabinet.right .twin-cap{background:#c8b6ff;animation-delay:0.232s}
+.twin-corner{position:absolute;width:8px;height:8px;background:#ffd93d;border:2px solid #1a0a05}
+.twin-corner.tl{top:4px;left:4px}.twin-corner.tr{top:4px;right:4px}
+.twin-corner.bl{bottom:4px;left:4px}.twin-corner.br{bottom:4px;right:4px}
+@keyframes twinPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+@keyframes twinCapPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
+
+/* ============================================== */
+/* #7C VINTAGE BOOMBOX                            */
+/* ============================================== */
+.boombox-bg{position:absolute;inset:0;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 80%);display:flex;justify-content:center;align-items:center;overflow:hidden;padding:0 8%}
+.boombox{position:relative;width:100%;height:78%;background:#c0c0c0;border:4px solid #1a0a05;box-shadow:inset 0 -6px 0 #888,inset 0 6px 0 #e0e0e0,4px 4px 0 #000;display:flex;align-items:center;padding:6%;gap:4%;animation:boomboxBob 0.93s ease-in-out infinite}
+.boombox::before{content:"";position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:40%;height:8px;background:#1a0a05;border-radius:50% 50% 0 0;border:2px solid #1a0a05}
+.bb-speaker{flex:1;aspect-ratio:1;border-radius:50%;background:#1a0a05;border:3px solid #444;position:relative;box-shadow:inset 0 0 0 4px #c0c0c0,inset 0 0 0 6px #1a0a05,inset 0 0 0 14px #3a1f55,inset 0 0 0 16px #1a0a05}
+.bb-cap{position:absolute;top:50%;left:50%;width:36%;height:36%;transform:translate(-50%,-50%);border-radius:50%;background:#ffd93d;border:2px solid #1a0a05;animation:bbCapPulse 0.465s ease-in-out infinite}
+.bb-speaker.right .bb-cap{background:#ff6b9d}
+.bb-deck{flex:1;align-self:stretch;background:#3a1f55;border:3px solid #1a0a05;display:flex;flex-direction:column;align-items:center;justify-content:space-around;padding:6px}
+.bb-screen{width:90%;height:30%;background:#5DCAA5;border:1px solid #1a0a05;display:flex;align-items:center;justify-content:center;font-size:6px;color:#1a0a05;letter-spacing:1px;font-weight:bold;text-shadow:0 0 3px #5DCAA5}
+.bb-buttons{display:flex;gap:3px}
+.bb-btn{width:8px;height:8px;background:#1a0a05;border-radius:50%;border:1px solid #444}
+.bb-btn.red{background:#ff6b9d}
+.bb-btn.yellow{background:#ffd93d}
+@keyframes boomboxBob{0%,100%{transform:translateY(0) rotate(-0.5deg)}50%{transform:translateY(-3px) rotate(0.5deg)}}
+@keyframes bbCapPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.15)}}
 </style>
 </head>
 <body>
 
-<h1>BG SAMPLES</h1>
-<p class="intro">BPM 129 同期 (1拍=465ms / 1小節=1860ms)<br>気に入ったやつ番号で番頭に教えて〜</p>
+<h1>BG SAMPLES v2</h1>
+<p class="intro">BPM 129 同期 / クリックでON/OFF<br>シンセウェイブ＋ステム連動 と スピーカー3種</p>
 
 <a href="../smile-bomb/" class="back-link">▸ ゲームに戻る ◂</a>
 
-<!-- ========== #4 SYNTHWAVE GRID ========== -->
+<!-- ========== #4-EX SYNTHWAVE + STEM BEAMS ========== -->
 <div class="panel">
-  <div class="panel-num">#4</div>
-  <div class="panel-name">SYNTHWAVE GRID</div>
+  <div class="panel-num">#4-EX</div>
+  <div class="panel-name">SYNTHWAVE + STEM 4-COLOR BEAMS</div>
   <div class="demo-stage">
     <div class="synthwave">
       <div class="sw-sun"></div>
       <div class="sw-horizon"></div>
       <div class="sw-grid"><div class="sw-grid-floor"></div></div>
-    </div>
-  </div>
-  <p class="panel-desc">80年代風ネオンドリーム地平線。グリッドが奥から手前へ流れる（1小節=1860ms周期）。太陽は1拍ごとに脈動。レトロフューチャー感、Tropical Dream Club の世界観に超フィット。</p>
-</div>
-
-<!-- ========== #7 SPEAKER CONE ========== -->
-<div class="panel">
-  <div class="panel-num">#7</div>
-  <div class="panel-name">GIANT SPEAKER CONE</div>
-  <div class="demo-stage">
-    <div class="speaker">
-      <div class="sp-ring r1"></div>
-      <div class="sp-ring r2"></div>
-      <div class="sp-ring r3"></div>
-      <div class="sp-rim">
-        <div class="sp-cone"></div>
-        <div class="sp-center"></div>
+      <div class="beams">
+        <div class="beam b1 on" data-stem="beat"><div class="beam-core"></div></div>
+        <div class="beam b2 on" data-stem="bass"><div class="beam-core"></div></div>
+        <div class="beam b3 on" data-stem="synth"><div class="beam-core"></div></div>
+        <div class="beam b4 on" data-stem="vocal"><div class="beam-core"></div></div>
       </div>
     </div>
   </div>
-  <p class="panel-desc">中央に巨大スピーカー。コーンが拍ごとにボフッと膨張、センターキャップが拍に合わせて色替わり（ピンク→黄）、外側のリングが波紋のように広がる。低音感・物理感バチクソ。</p>
+  <div class="toggle-row">
+    <button class="toggle-btn beat on" data-stem="beat"><span>BEAT</span></button>
+    <button class="toggle-btn bass on" data-stem="bass"><span>BASS</span></button>
+    <button class="toggle-btn synth on" data-stem="synth"><span>SYNTH</span></button>
+    <button class="toggle-btn vocal on" data-stem="vocal"><span>VOCAL</span></button>
+  </div>
+  <p class="panel-desc">シンセウェイブグリッドの上に**4色の光のビーム**がボワーンと立ち上がる。各ビームがステム ON/OFF と連動（試しに上のボタンで切替）。OFF にしたビームはほぼ消える → ステム切替が背景演出にも反映される強連動仕様。</p>
 </div>
 
-<!-- ========== #5 PIANO ROLL ========== -->
+<!-- ========== #7A REGGAE SOUND SYSTEM ========== -->
 <div class="panel">
-  <div class="panel-num">#5</div>
-  <div class="panel-name">PIANO ROLL VERTICAL STREAM</div>
+  <div class="panel-num">#7A</div>
+  <div class="panel-name">REGGAE SOUND SYSTEM (Stack)</div>
   <div class="demo-stage">
-    <div class="piano-roll">
-      <div class="pr-lane beat"><span class="pr-lane-label">BEAT</span></div>
-      <div class="pr-lane bass"><span class="pr-lane-label">BASS</span></div>
-      <div class="pr-lane synth"><span class="pr-lane-label">SYNTH</span></div>
-      <div class="pr-lane vocal"><span class="pr-lane-label">VOCAL</span></div>
-      <div class="pr-grid-h g1"></div>
-      <div class="pr-grid-h g2"></div>
-      <div class="pr-grid-h g3"></div>
-      <div class="pr-judgment"></div>
+    <div class="reggae-stack">
+      <div class="stack-cabinet">
+        <div class="stack-title">DUB</div>
+        <div class="stack-cone large"><div class="stack-cone-cap"></div></div>
+        <div class="stack-cone medium"><div class="stack-cone-cap"></div></div>
+      </div>
     </div>
   </div>
-  <p class="panel-desc">4レーンに対応する縦ストリーム。各拍で擬似ノートが上から流れる（実際の音譜とは無関係、装飾用）。ノート色＝ステム色（BEAT=ピンク／BASS=パープル／SYNTH=グリーン／VOCAL=黄）。下端に判定ラインっぽい虹色バー。実装時はステム OFF にしたレーンのノート止める＝ゲーム性とも連動可能。</p>
+  <p class="panel-desc">縦長の木製キャビネットに2基のドライバー（コーン）。「DUB」のラベル、年季の入った木目（横スジ）、黒い枠で**ヴィンテージ感**。コーンのキャップが拍ごとにピンク↔黄に色替わり＆膨張。サウンドシステム文化の単機タイプ。</p>
+</div>
+
+<!-- ========== #7B TWIN WALL ========== -->
+<div class="panel">
+  <div class="panel-num">#7B</div>
+  <div class="panel-name">TWIN WALL SPEAKERS</div>
+  <div class="demo-stage">
+    <div class="twin-wall">
+      <div class="twin-cabinet left">
+        <span class="twin-corner tl"></span><span class="twin-corner tr"></span>
+        <span class="twin-corner bl"></span><span class="twin-corner br"></span>
+        <div class="twin-cone"><div class="twin-cap"></div></div>
+      </div>
+      <div class="twin-cabinet right">
+        <span class="twin-corner tl"></span><span class="twin-corner tr"></span>
+        <span class="twin-corner bl"></span><span class="twin-corner br"></span>
+        <div class="twin-cone"><div class="twin-cap"></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="panel-desc">フェスティバル感ある2連スピーカー壁。木製キャビネット＋黄色の四隅コーナー金具（ロードケース風）。左右が**半拍ずれて**膨張（左が拍頭、右が裏拍）→ オフビート感を視覚化。グリーン＆パープルのキャップでカラフル。</p>
+</div>
+
+<!-- ========== #7C BOOMBOX ========== -->
+<div class="panel">
+  <div class="panel-num">#7C</div>
+  <div class="panel-name">VINTAGE BOOMBOX</div>
+  <div class="demo-stage">
+    <div class="boombox-bg">
+      <div class="boombox">
+        <div class="bb-speaker left"><div class="bb-cap"></div></div>
+        <div class="bb-deck">
+          <div class="bb-screen">PLAY ▶</div>
+          <div class="bb-buttons">
+            <div class="bb-btn red"></div>
+            <div class="bb-btn yellow"></div>
+            <div class="bb-btn"></div>
+          </div>
+        </div>
+        <div class="bb-speaker right"><div class="bb-cap"></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="panel-desc">80s〜90s 風ヴィンテージ・ブームボックス。シルバー筐体＋ハンドル、緑のLCD表示、赤・黄のボタン。**全体が左右にゆらゆら揺れる**（2拍周期）→ 持ち歩いてる感じ。コーンキャップが拍ごとに膨張。レゲエとは違うけどレトロで親しみやすい。</p>
 </div>
 
 <a href="../smile-bomb/" class="back-link">▸ ゲームに戻る ◂</a>
 <div style="font-size:7px;color:#888;text-align:center;letter-spacing:2px;margin-top:14px">v 0.18 sandbox</div>
 
 <script>
-// Piano roll: spawn notes at half-beat tempo (BPM 129 → ~232ms)
-const pianoRolls = document.querySelectorAll('.piano-roll');
-const HALF_BEAT_MS = 60000 / 129 / 2;
-
-pianoRolls.forEach(roll => {
-  const lanes = roll.querySelectorAll('.pr-lane');
-  setInterval(() => {
-    // 1 to 2 notes per half-beat (more density looks "musical")
-    const count = Math.random() < 0.5 ? 1 : 2;
-    const usedLanes = new Set();
-    for(let i = 0; i < count; i++){
-      let idx;
-      let tries = 0;
-      do { idx = Math.floor(Math.random() * lanes.length); tries++; }
-      while(usedLanes.has(idx) && tries < 8);
-      usedLanes.add(idx);
-      const note = document.createElement('div');
-      note.className = 'pr-note';
-      note.style.height = (8 + Math.random() * 14) + 'px';
-      lanes[idx].appendChild(note);
-      setTimeout(() => note.remove(), 2600);
+// Toggle stem beams
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const stem = btn.dataset.stem;
+    const isOn = btn.classList.toggle('on');
+    const beam = document.querySelector(`.beam[data-stem="${stem}"]`);
+    if(beam){
+      beam.classList.toggle('on', isOn);
+      beam.classList.toggle('off', !isOn);
     }
-  }, HALF_BEAT_MS);
+  });
 });
 </script>
 </body>
