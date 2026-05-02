@@ -45,9 +45,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .progress-fill{height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd93d,#5DCAA5,#c8b6ff);width:0%;transition:width 0.1s linear}
 
 .stage-area{flex:1;background:linear-gradient(180deg,#1a0a2e 0%,#4a1a4e 28%,#7a1d44 50%,#c8336e 65%,#ff6b9d 76%,#ffd93d 90%,#ffe9a8 100%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
-/* Synthwave background elements */
-.sw-sun{position:absolute;left:50%;bottom:48%;transform:translate(-50%,50%);width:64%;aspect-ratio:2/1;background:radial-gradient(ellipse at 50% 100%,#ffd93d 0%,#ff6b9d 60%,transparent 100%);animation:sunPulse 0.465s ease-in-out infinite;filter:blur(2px);z-index:1;pointer-events:none}
-.sw-sun::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,0.4) 4px 6px);mask-image:linear-gradient(0deg,#000 30%,transparent 100%);-webkit-mask-image:linear-gradient(0deg,#000 30%,transparent 100%)}
+/* Synthwave background elements (no sun - removed per user request) */
 .sw-grid{position:absolute;left:0;right:0;bottom:0;height:55%;perspective:160px;perspective-origin:50% 0;z-index:1;pointer-events:none}
 .sw-grid-floor{position:absolute;inset:0;background:
   linear-gradient(180deg,transparent 0%,#1a0a2e 90%),
@@ -55,7 +53,6 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
   repeating-linear-gradient(0deg,transparent 0 18px,#ff6b9d 18px 19px);
   transform-origin:top center;transform:rotateX(60deg) translateZ(0);animation:gridFlow 1.86s linear infinite}
 .sw-horizon{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent,#ffd93d 50%,transparent);box-shadow:0 0 12px #ffd93d;z-index:2;pointer-events:none}
-@keyframes sunPulse{0%,100%{transform:translate(-50%,50%) scale(1)}50%{transform:translate(-50%,50%) scale(1.05)}}
 @keyframes gridFlow{from{background-position:0 0,0 0,0 0}to{background-position:0 0,0 0,0 19px}}
 /* 4 stem light beams (mix-blend-mode:screen for additive color) */
 .beam{position:absolute;bottom:0;width:14%;height:100%;filter:blur(10px);transition:opacity 0.25s ease-out;mix-blend-mode:screen;z-index:2;pointer-events:none}
@@ -167,7 +164,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-jp">微笑みの爆弾</div>
     <div class="title-sub" style="margin-top:10px">( BIG THANX CLUB REMIX )</div>
     <div class="title-phase">▸ BPM 129 ◂</div>
-    <div class="title-version">v 0.20</div>
+    <div class="title-version">v 0.21</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -193,8 +190,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
 
 <div class="stage-area">
-  <!-- Synthwave background -->
-  <div class="sw-sun"></div>
+  <!-- Synthwave background (sun removed) -->
   <div class="sw-horizon"></div>
   <div class="sw-grid"><div class="sw-grid-floor"></div></div>
   <!-- 4 stem light beams (toggle with stem switches) -->
@@ -387,7 +383,8 @@ const PENGUIN_SPRITE = {
 
 // Background pixel speaker (procedural ring rendering)
 const SPEAKER_PIX = 3;
-const SPEAKER_BASE_R = 32;
+const SPEAKER_BASE_R = 38;          // 1.2x bigger (was 32)
+const SPEAKER_CY_PCT = 0.35;        // 35% from top (was 55%, moved up)
 
 function drawPixelRingBg(cx, cy, rOuter, rInner, color){
   gctx.fillStyle = color;
@@ -422,7 +419,7 @@ function drawPixelDiscBg(cx, cy, r, color){
 
 function drawSpeaker(now){
   const cx = Math.floor(GAME_W / 2);
-  const cy = Math.floor(GAME_H * 0.55);
+  const cy = Math.floor(GAME_H * SPEAKER_CY_PCT);
   const phase = (now % BEAT_INTERVAL_MS) / BEAT_INTERVAL_MS;
   const pulse = Math.sin(phase * Math.PI);
   const PIX = SPEAKER_PIX;
