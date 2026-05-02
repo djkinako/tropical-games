@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>微笑みの爆弾 (BIG THANX CLUB REMIX)</title>
+<meta name="description" content="Tropical Dream Club リリース告知ミニゲーム。BPM129のビートに乗ってブロック崩し！">
+<!-- Open Graph / Facebook / LINE / Discord -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="微笑みの爆弾 (BIG THANX CLUB REMIX)">
+<meta property="og:description" content="Tropical Dream Club リリース告知ミニゲーム。BPM129のビートに乗ってブロック崩し！">
+<meta property="og:image" content="https://djkinako.github.io/tropical-games/smile-bomb/og.jpg">
+<meta property="og:url" content="https://djkinako.github.io/tropical-games/smile-bomb/">
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="微笑みの爆弾 (BIG THANX CLUB REMIX)">
+<meta name="twitter:description" content="Tropical Dream Club リリース告知ミニゲーム">
+<meta name="twitter:image" content="https://djkinako.github.io/tropical-games/smile-bomb/og.jpg">
 <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
@@ -19,6 +31,9 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .title-sub{font-size:10px;color:#ff6b9d;letter-spacing:2px;line-height:1.6}
 .title-phase{font-size:7px;margin-top:8px;color:#5DCAA5}
 .title-version{font-size:7px;margin-top:6px;color:#888;letter-spacing:2px}
+.title-playcount{font-size:8px;margin-top:18px;color:#5DCAA5;letter-spacing:3px;text-shadow:1px 1px 0 #1a0a2e}
+.share-btn{margin-top:14px;padding:12px 28px;background:#ff6b9d;border:3px solid #fff;color:#fff;font-family:inherit;font-size:10px;cursor:pointer;letter-spacing:2px;box-shadow:3px 3px 0 #1a0a2e}
+.share-btn:active{transform:translate(1px,1px);box-shadow:2px 2px 0 #1a0a2e}
 .warning-box{border:3px solid #ff6b9d;padding:18px 16px;background:rgba(45,22,64,0.95);position:relative;font-size:9px;line-height:1.9;color:#fff;max-width:300px}
 .warning-box::before,.warning-box::after,.warning-box>.dot1,.warning-box>.dot2{content:"";position:absolute;width:6px;height:6px;background:#ffd93d}
 .warning-box::before{top:4px;left:4px}.warning-box::after{bottom:4px;right:4px}
@@ -164,7 +179,8 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-jp">微笑みの爆弾</div>
     <div class="title-sub" style="margin-top:10px">( BIG THANX CLUB REMIX )</div>
     <div class="title-phase">▸ BPM 129 ◂</div>
-    <div class="title-version">v 0.21</div>
+    <div class="title-version">v 0.22</div>
+    <div class="title-playcount" id="playCountDisplay">PLAYED ---</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -179,6 +195,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div id="loadingBar" class="loading-bar hidden"><div class="loading-fill" id="loadingFill"></div></div>
   <div id="loadingText" class="loading-text hidden">LOADING 0%</div>
   <div id="pressStart" class="press-start">▸ TAP TO START ◂</div>
+  <button id="shareBtn" class="share-btn hidden">📤 SHARE</button>
 </div>
 
 <!-- Game UI -->
@@ -321,6 +338,39 @@ const CHEER_MESSAGES = [
   'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
 ];
 
+// CountAPI: aggregate play count across all players
+const COUNTAPI_NS = 'tropicalgames-smilebomb';
+const COUNTAPI_KEY = 'play';
+const COUNTAPI_BASE = 'https://api.countapi.xyz';
+let totalPlayCount = null; // global play count fetched on load
+
+async function fetchPlayCount(){
+  try {
+    const r = await fetch(`${COUNTAPI_BASE}/get/${COUNTAPI_NS}/${COUNTAPI_KEY}`);
+    if(!r.ok) return null;
+    const d = await r.json();
+    return d.value;
+  } catch(e){ return null; }
+}
+async function incrementPlayCount(){
+  try {
+    const r = await fetch(`${COUNTAPI_BASE}/hit/${COUNTAPI_NS}/${COUNTAPI_KEY}`);
+    if(!r.ok) return null;
+    const d = await r.json();
+    return d.value;
+  } catch(e){ return null; }
+}
+function formatCount(n){
+  if(n == null) return '---';
+  return n.toLocaleString();
+}
+
+// Share card snapshot (3:30 game canvas → composite share image)
+const SHARE_SNAPSHOT_TIME_S = 210; // 3:30
+let shareSnapshotTaken = false;
+let shareCardBlob = null;          // memory-held composite Blob
+let kinakoImg = null, bunImg = null; // preloaded char images for compositing
+
 // Boss battle: warning at 3:20, actual spawn at 3:27 (7s alert)
 const BOSS_WARNING_TIME_S = 200;        // 3:20
 const BOSS_SPAWN_DELAY_MS = 7000;        // 7s between warning and actual spawn
@@ -380,6 +430,102 @@ const PENGUIN_SPRITE = {
     [0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0],
   ]
 };
+
+// Capture 3:30 game canvas + composite into 1080x1080 share card
+async function captureShareCard(){
+  if(shareSnapshotTaken) return;
+  shareSnapshotTaken = true;
+  // 1. Capture current game canvas as image
+  const gameSnap = canvas; // direct ref to live canvas
+  // 2. Build offscreen 1080x1080 composite
+  const off = document.createElement('canvas');
+  off.width = 1080; off.height = 1080;
+  const ox = off.getContext('2d');
+  ox.imageSmoothingEnabled = false;
+  // 3. Background gradient (synthwave style)
+  const grad = ox.createLinearGradient(0, 0, 0, 1080);
+  grad.addColorStop(0, '#1a0a2e');
+  grad.addColorStop(0.4, '#4a1a4e');
+  grad.addColorStop(0.7, '#c8336e');
+  grad.addColorStop(1, '#ffd93d');
+  ox.fillStyle = grad;
+  ox.fillRect(0, 0, 1080, 1080);
+  // 4. Title strip (top)
+  ox.fillStyle = 'rgba(26,10,46,0.85)';
+  ox.fillRect(0, 0, 1080, 180);
+  ox.fillStyle = '#c8b6ff';
+  ox.font = 'bold 22px "Press Start 2P", monospace';
+  ox.textAlign = 'center';
+  ox.fillText('TROPICAL DREAM CLUB PRESENTS', 540, 50);
+  ox.fillStyle = '#ffd93d';
+  ox.font = 'bold 70px "DotGothic16", sans-serif';
+  ox.fillText('微笑みの爆弾', 540, 130);
+  ox.fillStyle = '#ff6b9d';
+  ox.font = 'bold 22px "Press Start 2P", monospace';
+  ox.fillText('( BIG THANX CLUB REMIX )', 540, 165);
+  // 5. Game capture in middle area (letterbox to preserve aspect)
+  const area = { x: 60, y: 220, w: 960, h: 600 };
+  const gameAspect = gameSnap.width / gameSnap.height;
+  const areaAspect = area.w / area.h;
+  let dW, dH, dX, dY;
+  if(gameAspect > areaAspect){
+    dW = area.w; dH = area.w / gameAspect;
+    dX = area.x; dY = area.y + (area.h - dH) / 2;
+  } else {
+    dH = area.h; dW = area.h * gameAspect;
+    dX = area.x + (area.w - dW) / 2; dY = area.y;
+  }
+  // letterbox bg
+  ox.fillStyle = '#0a0510';
+  ox.fillRect(area.x, area.y, area.w, area.h);
+  // border
+  ox.strokeStyle = '#ff6b9d';
+  ox.lineWidth = 4;
+  ox.strokeRect(area.x, area.y, area.w, area.h);
+  // game canvas
+  ox.drawImage(gameSnap, dX, dY, dW, dH);
+  // 6. Score badge bottom
+  ox.fillStyle = 'rgba(26,10,46,0.85)';
+  ox.fillRect(0, 850, 1080, 230);
+  ox.fillStyle = '#ffd93d';
+  ox.font = 'bold 36px "Press Start 2P", monospace';
+  ox.fillText('SCORE  ' + String(score).padStart(5,'0'), 540, 920);
+  // 7. Tag + URL line
+  ox.fillStyle = '#c8b6ff';
+  ox.font = '20px "Press Start 2P", monospace';
+  ox.fillText('#tropicaldreamclub  #微笑みの爆弾', 540, 970);
+  ox.fillStyle = '#fff';
+  ox.font = '18px "Press Start 2P", monospace';
+  ox.fillText('djkinako.github.io / tropical-games / smile-bomb', 540, 1010);
+  // 8. Character cameos (small at bottom corners)
+  if(kinakoImg && kinakoImg.complete) ox.drawImage(kinakoImg, 30, 880, 110, 110);
+  if(bunImg && bunImg.complete) ox.drawImage(bunImg, 940, 880, 110, 110);
+  // 9. Output as PNG Blob
+  shareCardBlob = await new Promise(r => off.toBlob(r, 'image/png', 0.92));
+}
+
+// Web Share API: pop native share sheet with the composite image
+async function shareCard(){
+  const url = 'https://djkinako.github.io/tropical-games/smile-bomb/';
+  const title = '微笑みの爆弾 (BIG THANX CLUB REMIX)';
+  const text = 'クリアしたで！スコア ' + score + ' 🔥 #tropicaldreamclub';
+  if(shareCardBlob){
+    const file = new File([shareCardBlob], 'smile-bomb-' + score + '.png', {type:'image/png'});
+    const data = { title, text, url, files: [file] };
+    if(navigator.canShare && navigator.canShare(data)){
+      try { await navigator.share(data); return; }
+      catch(e){ if(e.name === 'AbortError') return; }
+    }
+  }
+  // Fallback: download image + open Twitter intent
+  if(shareCardBlob){
+    const dlUrl = URL.createObjectURL(shareCardBlob);
+    const a = document.createElement('a');
+    a.href = dlUrl; a.download = 'smile-bomb-' + score + '.png'; a.click();
+  }
+  const tw = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
+  window.open(tw, '_blank');
+}
 
 // Background pixel speaker (procedural ring rendering)
 const SPEAKER_PIX = 3;
@@ -1493,6 +1639,10 @@ function gameLoop(now){
   if(!bossWarningShown && cur >= BOSS_WARNING_TIME_S){
     triggerBossWarning();
   }
+  // Capture share-card snapshot at 3:30 (boss visible)
+  if(!shareSnapshotTaken && cur >= SHARE_SNAPSHOT_TIME_S){
+    captureShareCard();
+  }
   // Tick fireworks (post-boss celebration)
   tickFireworks(now);
   gameRafId = requestAnimationFrame(gameLoop);
@@ -1525,6 +1675,9 @@ async function loadAll(){
   BOSS_IMAGE_NAMES.forEach(name => {
     tasks.push(loadImage('./assets/boss/'+name+'.png').then(img => { if(img) BOSS_IMAGES[name] = img; }));
   });
+  // Character images preload (for share card composition)
+  tasks.push(loadImage('./assets/characters/kinako.png').then(img => { if(img) kinakoImg = img; }));
+  tasks.push(loadImage('./assets/characters/bun.png').then(img => { if(img) bunImg = img; }));
   let done = 0;
   const total = tasks.length;
   tasks.forEach(p => p.then(() => {
@@ -1592,6 +1745,10 @@ function startGame(){
   bossBattleActive = false;
   postBossFireworks = false;
   fireworkQueue = [];
+  // Share snapshot reset
+  shareSnapshotTaken = false;
+  shareCardBlob = null;
+  $('shareBtn').classList.add('hidden');
   $('bossWarning').classList.add('hidden');
   hideAd();
   $('adPopup').classList.add('hidden'); // ensure hidden
@@ -1619,6 +1776,10 @@ function stop(){
   $('loadingText').classList.add('hidden');
   $('timeDisplay').textContent = '00:00 / ' + fmt(songDuration);
   $('progressFill').style.width = '0%';
+  // Show share button only if a snapshot was actually captured during play
+  if(shareCardBlob){
+    $('shareBtn').classList.remove('hidden');
+  }
 }
 
 function fmt(t){
@@ -1765,8 +1926,26 @@ window.addEventListener('DOMContentLoaded', () => {
       $('loadingText').classList.add('hidden');
     }
     $('startScreen').classList.add('hidden');
+    // Increment play count (fire-and-forget, no waiting)
+    incrementPlayCount().then(v => {
+      if(v != null){
+        totalPlayCount = v;
+        $('playCountDisplay').textContent = 'PLAYED ' + formatCount(v);
+      }
+    });
     startStems();
     startGame();
+  });
+
+  // Share button
+  $('shareBtn').addEventListener('click', () => shareCard());
+
+  // Initial fetch of play count (for display before first tap)
+  fetchPlayCount().then(v => {
+    if(v != null){
+      totalPlayCount = v;
+      $('playCountDisplay').textContent = 'PLAYED ' + formatCount(v);
+    }
   });
 });
 </script>
