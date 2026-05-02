@@ -262,42 +262,52 @@ h1{font-size:14px;color:#ffd93d;text-shadow:2px 2px 0 #ff6b9d;letter-spacing:2px
     // Background
     ctx.fillStyle = '#1a0a2e';
     ctx.fillRect(0, 0, W, H);
-    // BG gradient bands (dotted scan look)
+    // BG scan lines
     ctx.fillStyle = 'rgba(74,26,78,0.4)';
     for(let y = 0; y < H; y += PIX*2){
       ctx.fillRect(0, y, W, PIX);
     }
     const cx = Math.floor(W/2), cy = Math.floor(H/2);
-    const beatPhase = (now % BEAT_MS) / BEAT_MS; // 0..1 each beat
-    const pulse = Math.sin(beatPhase * Math.PI); // 0..1..0
-    // Outer ring expanding pulse (ripple)
-    const rippleR = 70 + pulse * 30;
-    const rippleAlpha = (1 - pulse) * 0.6;
-    if(rippleAlpha > 0.05){
-      ctx.globalAlpha = rippleAlpha;
-      drawPixelRing(cx, cy, rippleR + PIX*2, rippleR - PIX*2, '#ff6b9d');
-      ctx.globalAlpha = 1;
+    const beatPhase = (now % BEAT_MS) / BEAT_MS;
+    const pulse = Math.sin(beatPhase * Math.PI); // 0..1..0 each beat
+    // Multiple sound-wave ripples emanating outward (3 ripples staggered)
+    for(let i = 0; i < 3; i++){
+      const phase = ((now + i * BEAT_MS / 3) % BEAT_MS) / BEAT_MS;
+      const rippleR = 95 + phase * 60;
+      const rippleAlpha = (1 - phase) * 0.55;
+      if(rippleAlpha > 0.04){
+        ctx.globalAlpha = rippleAlpha;
+        drawPixelRing(cx, cy, rippleR + PIX, rippleR - PIX, '#ff6b9d');
+        ctx.globalAlpha = 1;
+      }
     }
-    const baseR = 78 + pulse * 4;
+    // Speaker pumps in/out: whole speaker expands by up to 14px on beat
+    const expand = pulse * 14;
+    const baseR = 78 + expand;
     // Outer black rim
     drawPixelRing(cx, cy, baseR + PIX*3, baseR + PIX*1, '#0a0510');
-    // Wood/frame
+    // Wood frame (light + dark stripe for shading)
     drawPixelRing(cx, cy, baseR + PIX*1, baseR - PIX*2, '#3a2615');
     drawPixelRing(cx, cy, baseR - PIX*2, baseR - PIX*3, '#5a3815');
-    // Inner black cone gap
+    // Inner black gap (recessed look)
     drawPixelRing(cx, cy, baseR - PIX*3, baseR - PIX*5, '#0a0510');
     // Outer cone (dark purple)
     drawPixelRing(cx, cy, baseR - PIX*5, baseR - PIX*9, '#3a1f55');
     // Mid cone (medium purple)
     drawPixelRing(cx, cy, baseR - PIX*9, baseR - PIX*13, '#4a1a4e');
-    // Inner darker recess
+    // Inner darker recess (cone bowl)
     drawPixelRing(cx, cy, baseR - PIX*13, baseR - PIX*16, '#2d1640');
-    // Cap base
     drawPixelDisc(cx, cy, baseR - PIX*16, '#1a0a2e');
-    // Cap (color shifts on beat)
+    // Dust cap with EXTRA vibration (vibrates more than the cone)
+    const capExtra = pulse * 6; // additional cap pulse on top of speaker expand
+    const capR = (baseR - PIX*17) + capExtra;
     const capColor = pulse > 0.4 ? '#ffd93d' : '#ff6b9d';
-    drawPixelDisc(cx, cy, baseR - PIX*17, capColor);
-    // Cap highlight (small white pixel block top-left)
+    drawPixelDisc(cx, cy, capR, capColor);
+    // Cap shadow (3D feel, bottom-right darker)
+    ctx.fillStyle = pulse > 0.4 ? '#c89800' : '#c8336e';
+    ctx.fillRect(cx + PIX*1, cy + PIX*2, PIX, PIX);
+    ctx.fillRect(cx + PIX*2, cy + PIX*1, PIX, PIX);
+    // Cap highlight (top-left shine)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(cx - PIX*3, cy - PIX*3, PIX, PIX);
     ctx.fillRect(cx - PIX*2, cy - PIX*4, PIX, PIX);
