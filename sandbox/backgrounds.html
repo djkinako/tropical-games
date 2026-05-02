@@ -179,6 +179,16 @@ h1{font-size:14px;color:#ffd93d;text-shadow:2px 2px 0 #ff6b9d;letter-spacing:2px
   <p class="panel-desc">フェスティバル感ある2連スピーカー壁。木製キャビネット＋黄色の四隅コーナー金具（ロードケース風）。左右が**半拍ずれて**膨張（左が拍頭、右が裏拍）→ オフビート感を視覚化。グリーン＆パープルのキャップでカラフル。</p>
 </div>
 
+<!-- ========== #7D PIXEL SPEAKER (procedural Canvas) ========== -->
+<div class="panel">
+  <div class="panel-num">#7D ⭐</div>
+  <div class="panel-name">PIXEL SPEAKER (procedural)</div>
+  <div class="demo-stage">
+    <canvas id="pixSpeakerCanvas" width="380" height="220" style="width:100%;height:100%;display:block;image-rendering:pixelated"></canvas>
+  </div>
+  <p class="panel-desc">Canvas で**完全カクカクのドット絵スピーカー**を手続き描画。ペンギンと同じピクセル単位描画。同心円のリングを整数ピクセルで重ね描き → **円のジャギーがそのまま出る**。1拍ごとにキャップ膨張＋色変化（ピンク↔黄）、外周が呼吸。スケール自由（小さくしてもクッキリ）、計算で動くから**画像ファイル不要**で軽い。</p>
+</div>
+
 <!-- ========== #7C BOOMBOX ========== -->
 <div class="panel">
   <div class="panel-num">#7C</div>
@@ -206,6 +216,96 @@ h1{font-size:14px;color:#ffd93d;text-shadow:2px 2px 0 #ff6b9d;letter-spacing:2px
 <div style="font-size:7px;color:#888;text-align:center;letter-spacing:2px;margin-top:14px">v 0.18 sandbox</div>
 
 <script>
+// ============================================================
+// #7D Pixel Speaker - procedural ring rendering on Canvas
+// ============================================================
+(function(){
+  const canvas = document.getElementById('pixSpeakerCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const W = canvas.width, H = canvas.height;
+  const BEAT_MS = 60000 / 129; // ~465ms
+  const PIX = 4; // each "pixel" = 4 actual canvas pixels (chunky)
+
+  function drawPixelRing(cx, cy, rOuter, rInner, color){
+    ctx.fillStyle = color;
+    const rO = Math.round(rOuter / PIX) * PIX;
+    const rI = Math.round(rInner / PIX) * PIX;
+    const rOSq = rO * rO;
+    const rISq = rI * rI;
+    for(let py = -rO; py <= rO; py += PIX){
+      for(let px = -rO; px <= rO; px += PIX){
+        const distSq = px*px + py*py;
+        if(distSq <= rOSq && distSq > rISq){
+          ctx.fillRect(cx + px - PIX/2, cy + py - PIX/2, PIX, PIX);
+        }
+      }
+    }
+  }
+
+  function drawPixelDisc(cx, cy, r, color){
+    ctx.fillStyle = color;
+    const rPix = Math.round(r / PIX) * PIX;
+    const rSq = rPix * rPix;
+    for(let py = -rPix; py <= rPix; py += PIX){
+      for(let px = -rPix; px <= rPix; px += PIX){
+        if(px*px + py*py <= rSq){
+          ctx.fillRect(cx + px - PIX/2, cy + py - PIX/2, PIX, PIX);
+        }
+      }
+    }
+  }
+
+  let raf = null;
+  function loop(now){
+    // Background
+    ctx.fillStyle = '#1a0a2e';
+    ctx.fillRect(0, 0, W, H);
+    // BG gradient bands (dotted scan look)
+    ctx.fillStyle = 'rgba(74,26,78,0.4)';
+    for(let y = 0; y < H; y += PIX*2){
+      ctx.fillRect(0, y, W, PIX);
+    }
+    const cx = Math.floor(W/2), cy = Math.floor(H/2);
+    const beatPhase = (now % BEAT_MS) / BEAT_MS; // 0..1 each beat
+    const pulse = Math.sin(beatPhase * Math.PI); // 0..1..0
+    // Outer ring expanding pulse (ripple)
+    const rippleR = 70 + pulse * 30;
+    const rippleAlpha = (1 - pulse) * 0.6;
+    if(rippleAlpha > 0.05){
+      ctx.globalAlpha = rippleAlpha;
+      drawPixelRing(cx, cy, rippleR + PIX*2, rippleR - PIX*2, '#ff6b9d');
+      ctx.globalAlpha = 1;
+    }
+    const baseR = 78 + pulse * 4;
+    // Outer black rim
+    drawPixelRing(cx, cy, baseR + PIX*3, baseR + PIX*1, '#0a0510');
+    // Wood/frame
+    drawPixelRing(cx, cy, baseR + PIX*1, baseR - PIX*2, '#3a2615');
+    drawPixelRing(cx, cy, baseR - PIX*2, baseR - PIX*3, '#5a3815');
+    // Inner black cone gap
+    drawPixelRing(cx, cy, baseR - PIX*3, baseR - PIX*5, '#0a0510');
+    // Outer cone (dark purple)
+    drawPixelRing(cx, cy, baseR - PIX*5, baseR - PIX*9, '#3a1f55');
+    // Mid cone (medium purple)
+    drawPixelRing(cx, cy, baseR - PIX*9, baseR - PIX*13, '#4a1a4e');
+    // Inner darker recess
+    drawPixelRing(cx, cy, baseR - PIX*13, baseR - PIX*16, '#2d1640');
+    // Cap base
+    drawPixelDisc(cx, cy, baseR - PIX*16, '#1a0a2e');
+    // Cap (color shifts on beat)
+    const capColor = pulse > 0.4 ? '#ffd93d' : '#ff6b9d';
+    drawPixelDisc(cx, cy, baseR - PIX*17, capColor);
+    // Cap highlight (small white pixel block top-left)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - PIX*3, cy - PIX*3, PIX, PIX);
+    ctx.fillRect(cx - PIX*2, cy - PIX*4, PIX, PIX);
+    raf = requestAnimationFrame(loop);
+  }
+  raf = requestAnimationFrame(loop);
+})();
+
 // Toggle stem beams
 document.querySelectorAll('.toggle-btn').forEach(btn => {
   btn.addEventListener('click', () => {
