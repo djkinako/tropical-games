@@ -146,7 +146,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.15</div>
+    <div class="title-version">v 0.16</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -183,7 +183,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
   <div id="bossWarning" class="boss-warning hidden">
     <div class="warn-icon">⚠ WARNING ⚠</div>
     <div class="warn-sub">BOSS APPROACHING</div>
-    <div class="warn-tiny">▸ 鬼が来るで！ ◂</div>
+    <div class="warn-tiny">▸ GET READY ◂</div>
   </div>
 </div>
 
@@ -295,14 +295,15 @@ const CHEER_MESSAGES = [
   'なぞれ！','スワイプ！','指でシュッ！','タマを導け！','なぞって変えろ！'
 ];
 
-// Boss battle (3:30 mark)
-const BOSS_TRIGGER_TIME_S = 210;
-const BOSS_HP = 200;
+// Boss battle (3:20 mark)
+const BOSS_TRIGGER_TIME_S = 200;
+const BOSS_HP = 240;
 const BOSS_DAMAGE_FLASH_MS = 300;
 const BOSS_DAMAGE_INTERVAL = 20; // every 20 hits show damage image
 const BOSS_DEFEAT_DELAY_MS = 3000;
-const BOSS_WIDTH_PCT = 0.40; // 40% of canvas width
-const FIREWORK_TOTAL = 30;
+// Width per phase: gradually grows 40% → 55%
+const BOSS_WIDTH_PCT_BY_PHASE = [0.40, 0.45, 0.50, 0.55];
+const FIREWORK_LAUNCH_INTERVAL_MS = 200; // continuous launches
 const BOSS_IMAGE_NAMES = ['normal','normal_dmg','angry','angry_dmg','defeated'];
 const BOSS_IMAGES = {};
 let boss = null;
@@ -310,7 +311,7 @@ let bossTriggered = false;
 let bossBattleActive = false;
 let postBossFireworks = false;
 let fireworkQueue = [];
-let fireworksDoneTime = 0;
+let lastFireworkLaunch = 0;
 
 // Penguin (butterfly-shooter homage): pixel-sprite formation enemies
 let penguins = [];
@@ -573,32 +574,37 @@ function updateBoss(dt){
   }
 }
 
+const FW_COLORS = ['#ff6b9d','#ffd93d','#5DCAA5','#c8b6ff','#ffffff','#EC4899','#ff8800'];
+
 function startFireworks(){
   postBossFireworks = true;
   fireworkQueue = [];
-  const FW_COLORS = ['#ff6b9d','#ffd93d','#5DCAA5','#c8b6ff','#ffffff','#EC4899','#ff8800'];
-  const now = performance.now();
-  for(let i = 0; i < FIREWORK_TOTAL; i++){
-    const fwTime = now + i * 130;
-    const launchX = 30 + Math.random() * (GAME_W - 60);
-    const burstX = launchX + (Math.random() - 0.5) * 80;
-    const burstY = GAME_H * (0.18 + Math.random() * 0.45);
-    fireworkQueue.push({
-      launchTime: fwTime,
-      burstTime: fwTime + 380,
-      launchX, launchY: GAME_H,
-      burstX, burstY,
-      color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
-      bursted: false
-    });
-  }
-  fireworksDoneTime = now + FIREWORK_TOTAL * 130 + 1800;
+  lastFireworkLaunch = 0;
+}
+
+function queueFirework(now){
+  const launchX = 30 + Math.random() * (GAME_W - 60);
+  const burstX = launchX + (Math.random() - 0.5) * 80;
+  const burstY = GAME_H * (0.18 + Math.random() * 0.45);
+  fireworkQueue.push({
+    launchTime: now,
+    burstTime: now + 380,
+    launchX, launchY: GAME_H,
+    burstX, burstY,
+    color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+    bursted: false
+  });
 }
 
 function tickFireworks(now){
   if(!postBossFireworks) return;
+  // Continuously launch new fireworks until song ends
+  if(now - lastFireworkLaunch > FIREWORK_LAUNCH_INTERVAL_MS){
+    lastFireworkLaunch = now;
+    queueFirework(now);
+  }
+  // Process active fireworks (trails + bursts)
   for(const fw of fireworkQueue){
-    // Trail particles between launch and burst
     if(!fw.bursted && now >= fw.launchTime && now < fw.burstTime){
       const t = (now - fw.launchTime) / (fw.burstTime - fw.launchTime);
       const tx = fw.launchX + (fw.burstX - fw.launchX) * t;
@@ -619,10 +625,8 @@ function tickFireworks(now){
       burstFirework(fw.burstX, fw.burstY, fw.color);
     }
   }
-  if(now >= fireworksDoneTime){
-    postBossFireworks = false;
-    fireworkQueue = [];
-  }
+  // Clean old bursted fireworks
+  fireworkQueue = fireworkQueue.filter(fw => !fw.bursted || (now - fw.burstTime < 1500));
 }
 
 function burstFirework(x, y, color){
@@ -1060,9 +1064,10 @@ function update(dt){
     }
     // boss collision (damage boss, reflect bullet)
     if(boss && bossBattleActive){
-      // Compute boss collision radius from current scaled width
+      // Compute boss collision size from phase-based width
       const bossImg = BOSS_IMAGES[boss.isAngry ? 'angry' : 'normal'];
-      const bossW = GAME_W * BOSS_WIDTH_PCT * boss.scale;
+      const widthPct = BOSS_WIDTH_PCT_BY_PHASE[boss.phase - 1] || 0.40;
+      const bossW = GAME_W * widthPct * boss.scale;
       const bossH = bossImg ? bossW * (bossImg.height / bossImg.width) : bossW;
       // Use ellipse-ish AABB: check if bullet is inside boss bounding box
       const halfW = bossW / 2, halfH = bossH / 2;
@@ -1258,7 +1263,8 @@ function render(){
     else imgKey = showDmg ? 'normal_dmg' : 'normal';
     const img = BOSS_IMAGES[imgKey];
     if(img){
-      const targetW = GAME_W * BOSS_WIDTH_PCT * (boss.defeated ? 1.0 : boss.scale);
+      const widthPct = BOSS_WIDTH_PCT_BY_PHASE[boss.phase - 1] || 0.40;
+      const targetW = GAME_W * widthPct * (boss.defeated ? 1.0 : boss.scale);
       const aspect = img.height / img.width;
       const w = targetW;
       const h = targetW * aspect;
@@ -1481,6 +1487,8 @@ function startGame(){
 function stop(){
   if(!isPlaying) return;
   isPlaying = false;
+  postBossFireworks = false; // halt fireworks loop on stop
+  fireworkQueue = [];
   STEMS.forEach(s => { try { stemSources[s].stop(); } catch(e){} });
   if(gameRafId){ cancelAnimationFrame(gameRafId); gameRafId = null; }
   $('startScreen').classList.remove('hidden');
