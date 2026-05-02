@@ -43,9 +43,29 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 .progress{width:100%;height:6px;border:1px solid #ff6b9d;background:#1a0a2e;position:relative;flex-shrink:0}
 .progress-fill{height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd93d,#5DCAA5,#c8b6ff);width:0%;transition:width 0.1s linear}
 
-.stage-area{flex:1;background:radial-gradient(ellipse at center,#3a1f55 0%,#1a0a2e 75%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
-.stage-area::before{content:"";position:absolute;width:90%;aspect-ratio:1;border:1px dashed rgba(255,107,157,0.25);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
-.stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:3;opacity:0;transition:opacity 0.05s}
+.stage-area{flex:1;background:linear-gradient(180deg,#1a0a2e 0%,#4a1a4e 28%,#7a1d44 50%,#c8336e 65%,#ff6b9d 76%,#ffd93d 90%,#ffe9a8 100%);border:2px solid #4a1a4e;position:relative;overflow:hidden;min-height:140px;transition:border-color 0.1s}
+/* Synthwave background elements */
+.sw-sun{position:absolute;left:50%;bottom:48%;transform:translate(-50%,50%);width:64%;aspect-ratio:2/1;background:radial-gradient(ellipse at 50% 100%,#ffd93d 0%,#ff6b9d 60%,transparent 100%);animation:sunPulse 0.465s ease-in-out infinite;filter:blur(2px);z-index:1;pointer-events:none}
+.sw-sun::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(0,0,0,0.4) 4px 6px);mask-image:linear-gradient(0deg,#000 30%,transparent 100%);-webkit-mask-image:linear-gradient(0deg,#000 30%,transparent 100%)}
+.sw-grid{position:absolute;left:0;right:0;bottom:0;height:55%;perspective:160px;perspective-origin:50% 0;z-index:1;pointer-events:none}
+.sw-grid-floor{position:absolute;inset:0;background:
+  linear-gradient(180deg,transparent 0%,#1a0a2e 90%),
+  repeating-linear-gradient(90deg,transparent 0 calc(100%/16),#ff6b9d calc(100%/16) calc(100%/16 + 1px)),
+  repeating-linear-gradient(0deg,transparent 0 18px,#ff6b9d 18px 19px);
+  transform-origin:top center;transform:rotateX(60deg) translateZ(0);animation:gridFlow 1.86s linear infinite}
+.sw-horizon{position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(90deg,transparent,#ffd93d 50%,transparent);box-shadow:0 0 12px #ffd93d;z-index:2;pointer-events:none}
+@keyframes sunPulse{0%,100%{transform:translate(-50%,50%) scale(1)}50%{transform:translate(-50%,50%) scale(1.05)}}
+@keyframes gridFlow{from{background-position:0 0,0 0,0 0}to{background-position:0 0,0 0,0 19px}}
+/* 4 stem light beams (mix-blend-mode:screen for additive color) */
+.beam{position:absolute;bottom:0;width:14%;height:100%;filter:blur(10px);transition:opacity 0.25s ease-out;mix-blend-mode:screen;z-index:2;pointer-events:none}
+.beam.on{opacity:0.55;animation:beamPulse 0.465s ease-in-out infinite}
+.beam.off{opacity:0.04}
+.beam.beat{left:8%;background:linear-gradient(0deg,#ff6b9d 0%,#ff6b9d 25%,transparent 90%)}
+.beam.bass{left:30%;background:linear-gradient(0deg,#c8b6ff 0%,#c8b6ff 25%,transparent 90%)}
+.beam.synth{left:54%;background:linear-gradient(0deg,#5DCAA5 0%,#5DCAA5 25%,transparent 90%)}
+.beam.vocal{left:76%;background:linear-gradient(0deg,#ffd93d 0%,#ffd93d 25%,transparent 90%)}
+@keyframes beamPulse{0%,100%{transform:scaleY(1) scaleX(1)}50%{transform:scaleY(1.06) scaleX(1.12)}}
+.stage-area::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,40,60,0) 100%);pointer-events:none;z-index:4;opacity:0;transition:opacity 0.05s}
 /* Popup ad overlay (mobile-game-style fake ad) - flat structure with explicit size */
 .ad-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;max-width:270px;height:270px;background:#fff;border:3px solid #1a0a2e;box-shadow:6px 6px 0 #4a1a4e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 18px;color:#1a0a2e;text-align:center;font-size:11px;line-height:1.8;gap:12px;z-index:5;pointer-events:none}
 .ad-popup .ad-label{font-size:9px;color:#ff6b9d;letter-spacing:2px;border:1px solid #ff6b9d;padding:3px 8px}
@@ -72,7 +92,7 @@ body{display:flex;flex-direction:column;height:100vh;height:100dvh;padding:8px;p
 @keyframes damageVignette{0%{opacity:1}100%{opacity:0}}
 body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 @keyframes shakeKey{10%{transform:translate(-3px,1px)}20%{transform:translate(3px,-1px)}30%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}50%{transform:translate(-3px,1px)}60%{transform:translate(3px,-1px)}70%{transform:translate(-2px,1px)}80%{transform:translate(2px,0)}90%{transform:translate(-1px,0)}100%{transform:translate(0,0)}}
-#gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2}
+#gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:3}
 
 /* Stems panel */
 .stems{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px;background:linear-gradient(180deg,#4a1a4e,#2d1640);border:2px solid #c8b6ff;flex-shrink:0}
@@ -146,7 +166,7 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
     <div class="title-main">BLOCK<br>RUSH</div>
     <div class="title-sub" style="margin-top:10px">- KINAKO MIX -</div>
     <div class="title-phase">▸ PHASE 1D · BPM 129 ◂</div>
-    <div class="title-version">v 0.18</div>
+    <div class="title-version">v 0.19</div>
   </div>
   <div class="warning-box">
     <span class="dot1"></span><span class="dot2"></span>
@@ -172,6 +192,15 @@ body.shake{animation:shakeKey 0.32s cubic-bezier(.36,.07,.19,.97)}
 <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
 
 <div class="stage-area">
+  <!-- Synthwave background -->
+  <div class="sw-sun"></div>
+  <div class="sw-horizon"></div>
+  <div class="sw-grid"><div class="sw-grid-floor"></div></div>
+  <!-- 4 stem light beams (toggle with stem switches) -->
+  <div class="beam beat on" data-stem="beat"></div>
+  <div class="beam bass on" data-stem="bass"></div>
+  <div class="beam synth on" data-stem="synth"></div>
+  <div class="beam vocal on" data-stem="vocal"></div>
   <canvas id="gameCanvas"></canvas>
   <div id="adPopup" class="ad-popup hidden">
     <button class="ad-close" id="adClose" aria-label="close">×</button>
@@ -354,6 +383,78 @@ const PENGUIN_SPRITE = {
     [0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0],
   ]
 };
+
+// Background pixel speaker (procedural ring rendering)
+const SPEAKER_PIX = 3;
+const SPEAKER_BASE_R = 32;
+
+function drawPixelRingBg(cx, cy, rOuter, rInner, color){
+  gctx.fillStyle = color;
+  const PIX = SPEAKER_PIX;
+  const rO = Math.round(rOuter / PIX) * PIX;
+  const rI = Math.round(rInner / PIX) * PIX;
+  const rOSq = rO * rO;
+  const rISq = rI * rI;
+  for(let py = -rO; py <= rO; py += PIX){
+    for(let px = -rO; px <= rO; px += PIX){
+      const distSq = px*px + py*py;
+      if(distSq <= rOSq && distSq > rISq){
+        gctx.fillRect(cx + px - PIX/2, cy + py - PIX/2, PIX, PIX);
+      }
+    }
+  }
+}
+
+function drawPixelDiscBg(cx, cy, r, color){
+  gctx.fillStyle = color;
+  const PIX = SPEAKER_PIX;
+  const rPix = Math.round(r / PIX) * PIX;
+  const rSq = rPix * rPix;
+  for(let py = -rPix; py <= rPix; py += PIX){
+    for(let px = -rPix; px <= rPix; px += PIX){
+      if(px*px + py*py <= rSq){
+        gctx.fillRect(cx + px - PIX/2, cy + py - PIX/2, PIX, PIX);
+      }
+    }
+  }
+}
+
+function drawSpeaker(now){
+  const cx = Math.floor(GAME_W / 2);
+  const cy = Math.floor(GAME_H * 0.55);
+  const phase = (now % BEAT_INTERVAL_MS) / BEAT_INTERVAL_MS;
+  const pulse = Math.sin(phase * Math.PI);
+  const PIX = SPEAKER_PIX;
+  // Multi-ripple sound waves
+  for(let i = 0; i < 3; i++){
+    const ph = ((now + i * BEAT_INTERVAL_MS / 3) % BEAT_INTERVAL_MS) / BEAT_INTERVAL_MS;
+    const rippleR = SPEAKER_BASE_R + 10 + ph * 30;
+    const rippleAlpha = (1 - ph) * 0.35;
+    if(rippleAlpha > 0.05){
+      gctx.globalAlpha = rippleAlpha;
+      drawPixelRingBg(cx, cy, rippleR + PIX, rippleR - PIX, '#ff6b9d');
+    }
+  }
+  gctx.globalAlpha = 0.8; // slightly transparent so bg shows through
+  // Speaker rim/cone
+  const expand = pulse * 6;
+  const baseR = SPEAKER_BASE_R + expand;
+  drawPixelRingBg(cx, cy, baseR + PIX*2, baseR + PIX*1, '#0a0510');
+  drawPixelRingBg(cx, cy, baseR + PIX*1, baseR - PIX*1, '#3a2615');
+  drawPixelRingBg(cx, cy, baseR - PIX*1, baseR - PIX*2, '#0a0510');
+  drawPixelRingBg(cx, cy, baseR - PIX*2, baseR - PIX*4, '#3a1f55');
+  drawPixelRingBg(cx, cy, baseR - PIX*4, baseR - PIX*6, '#4a1a4e');
+  drawPixelRingBg(cx, cy, baseR - PIX*6, baseR - PIX*7, '#2d1640');
+  drawPixelDiscBg(cx, cy, baseR - PIX*7, '#1a0a2e');
+  // Cap (vibrating dust cap)
+  const capR = (baseR - PIX*8) + pulse * 3;
+  const capColor = pulse > 0.4 ? '#ffd93d' : '#ff6b9d';
+  drawPixelDiscBg(cx, cy, capR, capColor);
+  // Highlight pixel
+  gctx.fillStyle = '#ffffff';
+  gctx.fillRect(cx - PIX*2, cy - PIX*2, PIX, PIX);
+  gctx.globalAlpha = 1;
+}
 
 // Speech bubble in butterfly-shooter pixel style (canvas drawing)
 function drawSpeechBubble(ctx, cx, cy, text, color){
@@ -1228,8 +1329,11 @@ function update(dt){
 function render(){
   gctx.clearRect(0, 0, GAME_W, GAME_H);
 
-  // Blocks (pixel-bevel style)
+  // Background: pixel speaker (drawn first so everything else overlays it)
   const tnow = performance.now();
+  drawSpeaker(tnow);
+
+  // Blocks (pixel-bevel style)
   for(const blk of blocks){
     gctx.fillStyle = blk.color;
     gctx.fillRect(blk.x, blk.y, blk.w, blk.h);
@@ -1557,7 +1661,7 @@ window.addEventListener('DOMContentLoaded', () => {
   gctx = canvas.getContext('2d');
   gctx.imageSmoothingEnabled = false;
 
-  // Stem switches (Mixer Fader: tap to toggle ON/OFF, handle slides)
+  // Stem switches (Mixer Fader: tap to toggle ON/OFF, handle slides + beam sync)
   document.querySelectorAll('.fader').forEach(r => {
     r.addEventListener('click', () => {
       const stem = r.dataset.stem;
@@ -1566,6 +1670,12 @@ window.addEventListener('DOMContentLoaded', () => {
       r.classList.toggle('off', !isOn);
       if(stemGains[stem]){
         stemGains[stem].gain.value = isOn ? 1 : 0;
+      }
+      // Sync stem beam visibility (background light column)
+      const beam = document.querySelector('.beam[data-stem="' + stem + '"]');
+      if(beam){
+        beam.classList.toggle('on', isOn);
+        beam.classList.toggle('off', !isOn);
       }
     });
   });
